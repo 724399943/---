@@ -1,0 +1,249 @@
+<template>
+  	<div class="content">
+  		<header class="head">
+        <a href="javascript:window.history.go(-1);" class="back"></a>
+  			<h1 class="y-confirm-order-h1">发帖</h1>
+  		</header>
+	   <div class="postWarp">
+          <div class="pcontent">
+               <div class="ptop">
+                  <input type="text" class="tinput" placeholder="请输入标题" v-model="dataJson.title">
+               </div>    
+               <div class="p-postmsg">
+                  <mavon-editor v-model="content" id="editor" @change="$change" @imgAdd="$imgAdd" @imgDel="$imgDel"></mavon-editor>
+                  <!-- <div class="texa" >
+                  </div> -->
+               </div>
+               <div class="p-fun">
+                  <!-- <div class="p-ftext"></div>
+                  <div class="p-uploadimg">
+                      <input type="file" accept="image/*;capture=camera" @change="imageuploaded">
+                  </div> -->
+                  <a href="javascript:;" class="submit" @click="editPost">发布</a>
+               </div>
+          </div>
+     </div>
+  	</div>
+</template>
+<script>
+// Local Registration
+import { mavonEditor } from 'mavon-editor'
+import 'mavon-editor/dist/css/index.css'
+
+export default {
+	data () {
+    return {
+      dataJson : {},
+      content : '',
+    }
+	},
+	created(){
+    this.getPostDetail();
+    this.initMavonEditor();
+	},
+  mounted() {
+
+  },
+  components: {
+      mavonEditor
+      // or 'mavon-editor': mavonEditor
+  },
+	methods: {
+	    getPostDetail(){
+          var requestJson = {id: this.$route.query.id};
+          this.$http.post('/Shop/Post/getPostDetail', requestJson, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if ( returnData['status'] == '200000' ) {
+                  this.dataJson = returnData['data']['list'];
+                  this.content = this.dataJson.content;
+              }
+          });
+      },
+      editPost(){
+          if ( !this.dataJson.title ) {
+              this.$store.commit('alert', {show:true,text:'请输入标题'});
+              return;
+          }
+          if ( !this.dataJson.content ) {
+              this.$store.commit('alert', {show:true,text:'请分享您的装修经验'});
+              return;
+          }
+          this.$http.post('/Shop/Post/editPost', this.dataJson, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if ( returnData['status'] == '200000' ) {
+                  this.$router.push({name:'myPost'});
+              } else {
+                  this.$store.commit('alert', {show:true,text:returnData['message']});
+              }
+          });
+      },
+      imageuploaded(e) {
+          var that = this;
+          var files = e.target.files || e.dataTransfer.files
+          var reader = null;
+          reader = new window.FileReader();
+          reader.readAsDataURL(files[0]);
+          reader.onload = function(e){
+            that.imgList.push(e.target.result);
+            that.$http.post('/Shop/Public/base64Upload', {image:e.target.result, dir:'Post'},{emulateJSON:true}).then(function(response){
+                if( response.data.status == "200000" ){
+                    that.imgList.push(e.target.result);
+                }
+              })
+          }
+      },
+      // getFoucs : function(){
+      //     var editor = document.getElementById("Kcontent");
+      //     editor.onfocus = function () {
+      //       window.setTimeout(function () {
+      //         var sel,range;
+      //         if (window.getSelection && document.createRange) {
+      //           range = document.createRange();
+      //           range.selectNodeContents(editor);
+      //           range.collapse(true);
+      //           range.setEnd(editor, editor.childNodes.length);
+      //           range.setStart(editor, editor.childNodes.length);
+      //           sel = window.getSelection();
+      //           sel.removeAllRanges();
+      //           sel.addRange(range);
+      //         } else if (document.body.createTextRange) {
+      //           range = document.body.createTextRange();
+      //           range.moveToElementText(editor);
+      //           range.collapse(true);
+      //           range.select();
+      //         }
+      //       }, 1);
+      //     }
+
+      //     editor.onfocus()
+      // }
+      $imgAdd(pos, $file){
+          var $vm = this;
+          var formdata = new FormData();
+          formdata.append(pos, $file);
+          formdata.append('session_id', localStorage.session_id);
+          this.$ajax({
+              url: '/Shop/Post/photoUpload',
+              method: 'post',
+              data: formdata,
+              headers: { 'Content-Type': 'multipart/form-data' },
+          }).then((res) => {
+              var returnData = res.data;
+              if ( returnData.error == 0 ) {
+                  $vm.$children[0].$imgUpdateByUrl(pos, returnData['url']);
+                  $vm.$children[0].$img2Url(pos, returnData['url']);
+              }
+          })
+          // this.img_file[pos] = $file;
+      },
+      $imgDel(pos){
+          // console.log(pos);
+          // delete this.img_file[pos];
+      },
+      $change(value, render){
+          this.dataJson.content = render;
+      },
+      initMavonEditor(){
+          mavonEditor.props = {
+              // 是否渲染滚动条样式(webkit)
+              scrollStyle: {
+                  type: Boolean,
+                  default: true
+              },
+              help: {
+                  type: String,
+                  default: null
+              },
+              // 初始value
+              value: {
+                  type: String,
+                  default: ''
+              },
+              // 初始value
+              language: {
+                  type: String,
+                  default: 'cn'
+              },
+              subfield: {
+                  type: Boolean,
+                  default: true
+              },
+              // 默认展示 edit & 其他 为编辑区域 preview  为预览区域
+              default_open: {
+                  type:  String,
+                  default: 'edit'
+              },
+              // 是否开启编辑
+              editable: {
+                  type: Boolean,
+                  default: true
+              },
+              // 是否开启工具栏
+              toolbarsFlag: {
+                  type: Boolean,
+                  default: true
+              },
+              // 工具栏
+              toolbars: {
+                  type: Object,
+                  default() {
+                      var toolbars = {
+                          'bold': true,
+                          'italic': true,
+                          'header': true,
+                          'underline': true,
+                          'strikethrough': true,
+                          'mark': true,
+                          'superscript': true,
+                          'subscript': true,
+                          'quote': true,
+                          'ol': true,
+                          'ul': true,
+                          'link': true,
+                          'imagelink': true,
+                          'code': true,
+                          'table': true,
+                          'undo': true,
+                          'redo': true,
+                          'trash': true,
+                          'save': true,
+                          'alignleft': true,
+                          'aligncenter': true,
+                          'alignright': true,
+                          'navigation': true,
+                          'subfield': true,
+                          'fullscreen': true,
+                          'readmodel': true,
+                          'htmlcode': true,
+                          'help': true,
+                          'preview': true
+                      }
+                      return toolbars
+                  }
+              },
+              code_style:{
+                  type:String,
+                  default:'code-github'
+              },
+              placeholder: {
+                  type: String,
+                  default: '分享您的装修经验'
+              },
+              ishljs: {
+                  type: Boolean,
+                  default: false
+              }
+          };
+      }
+	}
+
+}
+</script>
+<style>
+#editor {
+    margin: auto;
+    width: 100%;
+    height: 500px;
+    z-index: 0;
+}
+</style>

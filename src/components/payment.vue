@@ -1,0 +1,156 @@
+<template>
+  	<div class="content">
+  		<header class="head">
+  			<a href="javascript:;" class="back" @click="goBack"></a>
+			<h1 class="y-confirm-order-h1">支付</h1>
+		</header>
+		<div class="main">
+			<div class="paywrap">
+				<ul>
+					<li :class="{on: alipayStyle}" @click="choosePaymethod('alipay')">
+						<div class="o_pay">
+							<em class="alipay"></em>
+							<span>支付宝支付</span>
+						</div>
+					</li>
+					<li :class="{on: wechatStyle}" @click="choosePaymethod('wechat_pay')">
+						<div class="o_pay">
+							<em class="wechat"></em>
+							<span>微信支付</span>
+						</div>
+					</li>
+					<!-- <li :class="{on: unionpayStyle}" @click="choosePaymethod('unionpay')">
+						<div class="o_pay">
+							<em class="balance"></em>
+							<span>银联支付</span>
+						</div>
+					</li> -->
+				</ul>
+				<div class="topay">
+					<span>需支付</span>
+					<i>￥{{total}}</i>
+					<a href="javascript:;" class="pay_btn" @click="toPay">去付款</a>
+				</div>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+import {} from '../assets/js/ap.js';
+export default {
+
+	data () {
+		return {
+			dataJson:{order_sn: this.$route.query.order_sn},
+			total : 0,
+			paymethod : '',
+			alipayStyle : false,
+			wechatStyle : false,
+			unionpayStyle : false,
+			userAgent : navigator.userAgent.toLowerCase(),
+			wechatAgent : false,
+			historyGo : (!!this.$route.query.historyGo) ? '0' : '1',
+		}
+	},
+	created(){
+		this.wechatAgent = ( this.userAgent.indexOf('micromessenger') != -1 ) ? true : false;
+		this.initPaymethod();
+		this.getData();
+	},
+	mounted(){
+		
+	},
+	methods: {
+		getData(){
+			this.$http.post('/Shop/Pay/pay', this.dataJson, {emulateJSON:true}).then(function(response){
+                var returnData = response['data'];
+                if( returnData['status'] == "200000" ){
+                    this.total = returnData['data']['list']['total'];
+                } else {
+                    this.$store.commit('alert',{show:true,text:returnData['message']});
+                    window.history.go(-1);
+                }
+            });
+		},
+		toPay(){
+			if ( this.wechatAgent == false ) {
+				window.location.href = "mitchell://pay?type="+this.paymethod+"&order_sn=" +this.$route.query.order_sn;
+				return;
+			}
+			var requestUrl;
+			switch ( this.paymethod ) {
+				case 'alipay' :
+					requestUrl = "/Shop/Pay/alipay";
+					this.dataJson.method = ( this.wechatAgent !== false ) ? 'web' : 'app';
+					break;
+				case 'wechat_pay' :
+					requestUrl = "/Shop/Pay/wechatpay";
+					this.dataJson.method = ( this.wechatAgent !== false ) ? 'web' : 'app';
+					break;
+				case 'unionpay' :
+					requestUrl = "/Shop/Pay/unionpay";
+					break;
+			}
+			this.$http.post(requestUrl, this.dataJson, {emulateJSON:true}).then(function(response){
+                var returnData = response['data'];
+                if( returnData['status'] == "200000" ){
+                    localStorage.paymethod = this.paymethod;
+                    switch ( this.paymethod ) {
+						case 'alipay' :
+							if ( this.wechatAgent !== false ) {
+								var gotoUrl = returnData['data']['apiParameters'];
+								_AP.pay(gotoUrl);
+							}
+							break;
+						case 'wechat_pay' :
+							if ( this.wechatAgent !== false ) {
+								
+							}
+							break;
+						case 'unionpay' :
+							
+							break;
+					}
+                } else {
+                    this.$store.commit('alert',{show:true,text:returnData['message']});
+                }
+            });
+		},
+		initPaymethod(){
+			var paymethod = localStorage.paymethod;
+			( !paymethod ) ?
+				this.choosePaymethod('alipay') :
+				this.choosePaymethod(paymethod);
+		},
+		choosePaymethod( method ){
+			switch ( method ) {
+				case 'alipay' :
+					this.alipayStyle = true;
+					this.wechatStyle = false;
+					this.unionpayStyle = false;
+					break;
+				case 'wechat_pay' :
+					this.alipayStyle = false;
+					this.wechatStyle = true;
+					this.unionpayStyle = false;
+					break;
+				case 'unionpay' :
+					this.alipayStyle = false;
+					this.wechatStyle = false;
+					this.unionpayStyle = true;
+					break;
+			}
+			this.paymethod = method;
+		},
+		goBack(){
+			if ( this.historyGo == '0' ) {
+				this.$router.push({name:'shoppingCart'});
+			} else {
+				window.history.go(-1);
+			}
+		}
+	}
+
+}
+</script>
+

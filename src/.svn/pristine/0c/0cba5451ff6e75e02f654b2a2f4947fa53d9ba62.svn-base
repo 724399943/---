@@ -1,0 +1,126 @@
+<template>
+  	<div class="content" id="agentList">
+  		<header class="head">
+			<a href="javascript:window.history.go('-1');" class="back"></a>
+			<h1 class="y-confirm-order-h1">{{category_name}}</h1>
+			<router-link to="/searchMerchant" class="search"></router-link>
+		</header>
+		<div class="main">
+			<div class="yy-experWarp">
+				<ul class="expul" v-if="noResult == false">
+					<li v-for="(data,index) in agentList">
+						<div class="imgbox">
+							<router-link :to="{name: 'shopDetails', query: {id: data['id']}}">
+								<img :src="data['logo']">
+							</router-link>
+						</div>
+						<div class="pp-msg">
+							<router-link :to="{name: 'shopDetails', query: {id: data['id']}}">
+								<p class="name db-overflow">{{data['agent_name']}}</p>
+								<div class="address">
+									<em>{{data['distance']}}m</em>
+									<span>{{data['address']}}</span>
+								</div>
+							</router-link>
+							<div class="pp-btn">
+								<span>导航到店</span>
+								<span class="red" @click="jumpToPanorama(data['panorama'])">全景逛店</span>
+							</div>
+						</div>
+					</li>
+				</ul>
+				<!-- 无结果 -->
+				<div class="noResult" v-else>
+					<div class="imgbox">
+						<img src="../assets/images/jccw_bg@2x.png">
+					</div>
+					<p>没有相关体验馆</p>
+				</div> 
+				<a href="javascript:;" class="toTop" @click="totop">
+					<img src="../assets/images/tyg_top_ico.png">
+				</a>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			category_name : this.$route.query.category_name,
+            agentList : [],
+            dataJson : {
+                category_path : this.$route.query.category_path,
+                page : 0
+            },
+            nomore : false,
+            noResult : false,
+            loadData : true,
+        }
+	},
+	created(){
+		this.$store.commit('loading',{show:true,text:'加载中...'});
+        this.getAgentList();
+	},
+	computed: {
+
+	},
+	mounted(){
+        this.loadMore();
+    },
+	methods: {
+		getAgentList : function() {
+			var that = this;
+            if ( that.loadData == true ) {
+            	that.dataJson.page++;
+                that.loadData = false;
+                that.$http.post('/Shop/Agent/agentList', that.dataJson, {emulateJSON:true}).then(function(response){
+                    var returnData = response['data'];
+                    if ( returnData['data']['list'].length ) {
+                        that.agentList = ( that.agentList.length ) ? that.agentList.concat(returnData['data']['list']) : returnData['data']['list'];
+                    } else {
+                        if ( that.agentList.length ) {
+                            that.nomore = true;
+                        } else {
+                            that.noResult = true;
+                        }
+                    }
+                    that.$nextTick(function () {
+                        that.loadData = true;
+                        that.$store.commit('loading',{show:false});
+                    })
+                });
+            }
+        },
+        loadMore(){
+            var that = this;
+            that.$store.commit('scrollFun',{dom:'agentList',auto:true,bottomCall:function(){           
+                if ( that.nomore == false ) {
+                    that.getAgentList();
+                }
+            }})
+        },
+        totop(){
+			var timer = null;
+			timer = setInterval(function(){
+				var _top = document.body.scrollTop + document.documentElement.scrollTop;
+				var speed = _top/5;
+				if( document.body.scrollTop ){
+					document.body.scrollTop -= speed; 
+				}else{                  
+					document.documentElement.scrollTop -= speed;
+				}
+				if( _top == 0){
+					clearInterval(timer);
+				}
+			},20)
+		},
+		jumpToPanorama(url){
+			window.location.href = url;
+		}
+	}
+
+}
+</script>
+

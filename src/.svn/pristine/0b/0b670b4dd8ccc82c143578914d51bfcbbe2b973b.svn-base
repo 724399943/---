@@ -1,0 +1,168 @@
+<template>
+  	<div class="content" id="Consignee">
+  		<header class="head">
+  			<a href="javascript:;" class="back" @click="goBack"></a>
+  			<h1 class="y-confirm-order-h1">收货地址</h1>			
+  		</header>
+  		<div class="main">
+  			<div class="myaddress_m">
+  				<div class="add_book_cont">
+  					<div class="add_book_box" v-for="(item,index) in list">
+              <div class="g_r_add_cont" v-if="dataJson.consignee_id" @click="chooseConsignee(item['id'])">
+                <div class="g_rece_line">
+                  <span>收货人：{{item.consignee}}</span> 
+                  <p>{{item.telephone}}</p>
+                </div> 
+                <div class="g_rece_address">
+                  <p>{{item.province_name}}{{item.city_name}}{{item.county_name}}{{item.address}}</p> 
+                </div>
+              </div>
+  						<div class="g_r_add_cont" v-else>
+  							<div class="g_rece_line">
+  								<span>收货人：{{item.consignee}}</span> 
+  								<p>{{item.telephone}}</p>
+  							</div> 
+  							<div class="g_rece_address">
+  								<p>{{item.province_name}}{{item.city_name}}{{item.county_name}}{{item.address}}</p> 
+  							</div>
+  						</div> 
+  						<div class="add_book_operate">
+  							<div class="a_b_operate" @click="setToDefault(item.id,index)">
+  								<em class="add" :class="{on:item.is_default == 1}"></em> 
+  								<span id="Jdefau">默认</span>
+  							</div> 
+								<div class="a_b_operate" @click="editAddress(item['id'])">
+									<em class="oedit"></em> 
+									<span>编辑</span>
+								</div>
+  							<a href="javascript:;" v-if="!dataJson.consignee_id">
+  								<div class="a_b_operate" @click="delConsignee('open',item.id,index)">
+  									<em class="odel"></em> 
+  									<span>删除</span>
+  								</div>
+  							</a>							
+  						</div>
+  					</div>
+  				</div>				
+  				<router-link :to="{name: 'newAddress', query: dataJson}" class="addBtn">新增地址</router-link>
+  			</div>
+  			<!-- 弹窗 -->
+  			<div class="consiDelbox" v-if="is_del == 1">
+  				<div class="csdel">
+  					<p>确认删除该收货地址吗？</p>
+  					<div class="btn">
+  						<span @click="delConsignee('close')">暂不删除</span>
+  						<span class="sure" @click="delConsignee('sure')">确认删除</span>
+  					</div>
+  				</div>
+  			</div>
+  		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+    return {
+      list : [],
+      hasAjax:0,
+      page : 1,
+      is_del : 0,
+      is_delID : "",
+      is_delIndex : "",
+      dataJson : {
+          consignee_id : ( this.$route.query.consignee_id ) ? this.$route.query.consignee_id : '',
+          is_buy :  ( this.$route.query.is_buy ) ? this.$route.query.is_buy : '0',
+          ids : ( this.$route.query.ids ) ? this.$route.query.ids : '',
+          message : ( this.$route.query.message ) ? this.$route.query.message : '',
+          install : ( this.$route.query.install ) ? this.$route.query.install : '',
+          coupon : ( this.$route.query.coupon ) ? this.$route.query.coupon : '',
+      },
+    }
+  },
+  created(){
+    this.$store.commit('loading',{show:true,text:'加载中...'});
+    this.getData();
+  },
+  mounted(){
+  	this.$store.commit('loading',{show:false});
+  	this.loadMore();
+  },
+  methods: {
+    getData(){
+    	if( this.hasAjax == 0 ){
+          this.hasAjax = 1;
+          this.$http.post('/Shop/Consignee/userConsignee', {page:this.page},{emulateJSON:true}).then(function(response){ 
+            this.hasAjax = 0;
+            if( this.page == 0 ){
+              this.list = response.data.data.list;
+              this.page++;              
+            }else{
+              if( response.data.data.list.length == 0 ){                
+                this.hasAjax = 1;
+              }else{
+                this.page++;
+                this.list = this.list.concat(response.data.data.list);
+              }
+            }
+            this.$store.commit('loading',{show:false});                               
+            });
+
+        }
+    },
+	loadMore(){         
+	    var that = this;
+	    this.$store.commit('scrollFun',{dom:"Consignee",auto:true,bottomCall:function(){           
+	       that.getData();
+	    }})
+    },
+    setToDefault : function(id,index){
+    	this.$http.post('/Shop/Consignee/setToDefault', {id:id},{emulateJSON:true}).then(function(response){
+         	if( response.data.status == "200000" ){
+         		for( var i = 0;i < this.list.length;i++ ){
+         			this.list[i].is_default = 0;
+         		}
+         		this.list[index].is_default = 1;
+        		this.$store.commit("alert",{show:true,text:response.data.message});                  
+        	}    
+      	});
+    },
+    delConsignee : function(type,id,index){
+    	if( type == "open" ){
+    		this.is_del = 1;
+    		this.is_delID = id;
+    		this.is_delIndex = index;
+    	}else if( type == "close" ){
+    		this.is_del = 0;
+    	}else{
+    		this.is_del = 0;
+	    	this.$http.post('/Shop/Consignee/delConsignee', {id:this.is_delID},{emulateJSON:true}).then(function(response){
+	         	if( response.data.status == "200000" ){  
+	         		this.list.splice(this.is_delIndex,1);       		
+	         		this.is_delIndex = "";
+	         		this.is_delID = "";
+	        		this.$store.commit("alert",{show:true,text:response.data.message});                  
+	        	}    
+	      	});
+    	}
+    },
+    chooseConsignee(consignee_id){
+        this.dataJson.consignee_id = consignee_id;
+        this.$router.push({name: 'orderInfo', query: this.dataJson});
+    },
+    editAddress(id){
+        this.dataJson.id = id;
+        this.$router.push({name: 'editAddress', query: this.dataJson});
+    },
+    goBack(){
+        if ( this.$route.query.ids ) {
+            this.$router.push({name: 'orderInfo', query: this.dataJson});
+        } else {
+            this.$router.push({name: 'personalCenter'});
+        }
+    }
+  }
+
+}
+</script>
+

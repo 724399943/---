@@ -1,0 +1,344 @@
+<template>
+  	<div class="content">
+  		<header class="head">
+  			<a href="javascript:window.history.go('-1');" class="back" v-if="isNeedBack != false"></a>
+			<h1 class="y-confirm-order-h1">购物车</h1>
+			<span class="text" v-if="is_edit == 0" @click="editCart('edit')">编辑</span>
+      		<span class="text" @click="editCart('finish')" v-else>完成</span>
+		</header>
+		<div class="main">
+			<div class="shopcarGoods" v-if="isHadGoods == true && is_temp == 0">
+				<div class="integral_goods" v-for="(item,index) in list" v-if="shoppingData['agent'][item.agent_id]['number'] > 0">
+			        <div class="inteshop">
+			            <div class="inscheox">
+			                <div class="inbox">
+			                    <input type="checkbox" :id="item.agent_id" :value="item.agent_id" v-model="agentId" @change="selThisShopAll(item.agent_id)"> 
+			                    <label :for="item.agent_id"></label>
+			                </div>
+			            </div>
+			            <router-link :to="{path: 'shopDetails', query: {id:item['agent_id']}}" class="ggshop">
+				            <p class="in-shop">{{item.agent_name}}</p>
+				        </router-link>
+			        </div>
+					<div class="is_hgoods">
+						<div class="sel_goodsm">
+							<ul>
+								<div v-for="(data,ind) in item.goodsList">
+									<li>
+										<div class="invalid" v-if="data.is_on_sale == 0">失效</div>
+										<div class="s_goods_wrap" v-else>
+											<div class="s_cbox">
+												<input type="checkbox" :id="data.id" :value="data.id" v-model="shoppingId" @change="selShopcart(item.agent_id)"> 
+												<label :for="data.id"></label>
+											</div>
+										</div>
+										<router-link :to="{name:'goodsDetail',query:{id:data['goods_id']}}">
+											<div class="imgbox">
+												<img :src="data.goods_image">
+											</div>
+											<div class="se_ggg sexiao">
+											 	<h1 class="db-overflow">{{data.goods_name}}</h1>
+											 	<p class="ggpt db-overflow">
+											 		<span>{{data.attr_list}}</span>
+											 	</p>
+									 			<div class="ssbuzhi">
+	                          						<div class="ggprice" v-if="(data.sale_id != '0' || data.daily_id != '0') && data.promotionData">
+						                                <span>￥{{data.promotionData.promotion_price}}</span>
+						                                <span class="nop">￥{{data['goods_price']}}</span>
+	                         				 		</div>
+	                         				 		<div class="ggprice" v-else>
+						                                <span>￥{{data.goods_price}}</span>
+	                         				 		</div>				                            
+	                            				</div>
+											</div>
+                      					</router-link>
+			                            <div class="ggnum">
+			                                <span @click="computedNum('sub',index,ind,data.id)">-</span><span class="num">{{data.goods_number}}</span><span @click="computedNum('add',index,ind,data.id)">+</span>
+			                            </div>      
+									</li>
+									<div class="seggfuw" v-if="data['can_install'] == '1'">
+							            <span>[服务]上门安装</span>
+							            <span class="fei">￥{{data.install_price}} x1</span>
+							            <a href="javascript:;" v-if="data['is_install'] == 0" @click="changeInstall('1',index,ind,data['id'])">选择</a>
+							            <a href="javascript:;" v-else @click="changeInstall('0',index,ind,data['id'])">取消</a>
+							        </div>
+								</div>
+							</ul>
+						</div> 
+					</div>			       
+				</div>				
+			</div>	
+			<!-- 未登录 -->
+			<div class="nologinShopcar" v-else>
+				<div class="nlscTop" v-if="is_temp == 1">
+					<span>您还没有登录哦~</span>
+					<router-link to="/login">登录</router-link>
+				</div>
+				<div class="nlsCont" v-if="isHadGoods == false || is_temp == 1">
+					<div class="nslpic">
+						<img src="../assets/images/gwc_bg.png">
+					</div>
+					<p>您的购物车空空如也，快去逛一逛吧~</p>
+				</div>
+			</div>	  	 
+			<div class="goods_total" v-if="is_temp == 0 && list != '' && isHadGoods == true" :style="{'bottom':bottom + 'px'}">
+				<div class="gtal_m">
+					<div class="gtalcheck">
+						<div class="checkboxs">
+							<input type="checkbox" name="" id="AllCheck" value="AllCheck" v-model="AllCheck" @change="selAllShopcart">
+							<label for="AllCheck"></label>
+						</div>
+					</div>
+					<span class="all">全选</span>
+					<!-- <span >合计：<em>￥{{total}}</em></span>  -->
+					<span v-if="is_edit == 0">合计：<em>￥{{total}}</em></span> 
+				</div>
+				<a href="javascript:;" v-if="is_edit == 0" @click="orderInfo">结算</a>
+        		<a href="javascript:;" @click="delShoppingCart" v-else>删除</a>
+			</div>					
+		</div>
+  	</div>
+
+</template>
+<script>
+
+export default {
+
+	data () {
+		return {
+			list : [],
+			is_temp : 1,
+			total : 0,
+			is_edit : 0,
+			shoppingId : [],
+			agentId : [],
+			AllCheck : '',
+			shoppingData : {
+				goods : {},
+				agent : {},
+				agentGoodsNumber : {}
+			},
+			isNeedBack : false,
+			isHadGoods : false,
+			bottom : '48',
+		}
+	},
+	created(){
+		this.$store.commit('loading',{show:true,text:'加载中...'});
+		this.getData();
+		console.log(this.$route.query.isNeedFooter != 'undefine' && this.$route.query.isNeedFooter == '0');
+		if ( this.$route.query.isNeedFooter != 'undefine' && this.$route.query.isNeedFooter == '0' ) {
+			this.$store.state.isNeedFooter = false;
+			this.isNeedBack = true;
+			this.bottom = '0';
+		}
+	},  
+	mounted(){
+		this.$store.commit('loading',{show:false});
+	},
+	methods: {
+	  	getData : function(){
+	  		this.$http.post('/Shop/Shop/shoppingCart', {},{emulateJSON:true}).then(function(response){
+	  			var returnData = response['data'];
+	          	if( returnData['status'] == "200000" ){
+	          		this.is_temp = returnData['data']['is_temp'];
+	              	this.list = returnData.data.list;
+	              	var index = 0;
+	              	for (var i = 0; i < this.list.length; i++) {
+	              		var data = this.list[i],
+	              			agent_id = data['agent_id'];
+	 	            	this.shoppingData['agent'][agent_id] = {};
+	 	            	this.shoppingData['agent'][agent_id]['number'] = 0;
+	 	            	this.shoppingData['agent'][agent_id]['index'] = i;
+	 	            	this.shoppingData['agent'][agent_id]['goods'] = {};
+	 	            	this.shoppingData['agentGoodsNumber'][agent_id] = {};
+	 	            	this.shoppingData['agentGoodsNumber'][agent_id]['number'] = 0;
+	 	            	for (var j = 0; j < data['goodsList'].length; j++) {
+	 	            		var goodsData = data['goodsList'][j],
+	 	            			shoppingId = goodsData['id'];
+	 	            		this.shoppingData['agent'][agent_id]['goods'][goodsData['id']] = index;
+	 	            		this.shoppingData['agent'][agent_id]['number']++;
+	 	            		this.shoppingData['goods'][shoppingId] = {};
+	 	            		if ( (goodsData['sale_id'] != '0' || goodsData['daily_id'] != '0') && goodsData['promotionData'] ) {
+	 	            			this.shoppingData['goods'][shoppingId]['goods_price'] = Number(goodsData['promotionData']['promotion_price']);
+	 	            		} else {
+	 	            			this.shoppingData['goods'][shoppingId]['goods_price'] = Number(goodsData['goods_price']);
+	 	            		}
+	 	            		this.shoppingData['goods'][shoppingId]['goods_number'] = Number(goodsData['goods_number']);
+	 	            		this.shoppingData['goods'][shoppingId]['is_install'] = goodsData['is_install'];
+	 	            		this.shoppingData['goods'][shoppingId]['install_price'] = Number(goodsData['install_price']);
+	 	            		this.shoppingData['goods'][shoppingId]['agent_id'] = goodsData['agent_id'];
+	 	            		this.shoppingData['goods'][shoppingId]['goods_id'] = goodsData['goods_id'];
+	 	            		this.shoppingData['agentGoodsNumber'][agent_id]['number']++;
+	 	            		index++;
+	 	            		this.shoppingId.push(shoppingId);
+	 	            	}
+	 	            	this.agentId.push(agent_id);
+	 	            	this.AllCheck = "AllCheck";
+	 	            }
+	 	            if ( this.list.length > 0 ) {
+	 	            	this.isHadGoods = true;
+	 	            }
+	 	            this.calcTotal();
+	          	}else{
+	          		this.is_temp = 1;
+	          	}  
+	      	});
+	  	},
+	  	delShoppingCart : function(){
+	  		var requestJson = {id:this.shoppingId.join(',')};
+	  		this.$http.post('/Shop/Shop/delShoppingCart', requestJson,{emulateJSON:true}).then(function(response){
+	  			var returnData = response['data'];
+	          	if( returnData['status'] == "200000" ){
+	          		var numberTotal = 0;
+	          		for ( var i in this.shoppingData['agent'] ) {
+		      			var agentData = this.shoppingData['agent'][i];
+		      			for ( var j in agentData['goods'] ) {
+		      				if ( this.shoppingId.indexOf(j) != '-1' ) {
+		      					this.list[agentData['index']]['goodsList'].splice(agentData['goods'][j], 1);
+		      					this.shoppingData['agent'][i]['number'] = --this.shoppingData['agent'][i]['number'];
+		      				}
+		      				numberTotal += this.shoppingData['agent'][i]['number'];
+		      			}
+		      		}
+		      		for( var i in this.shoppingData['goods'] ){
+		      			for(var j=0; j<this.shoppingId.length; j++){
+		      				if( i == this.shoppingId[j]){
+		      					delete(this.shoppingData['goods'][i]);
+		      					break;
+		      				}
+		      			}
+		      		}
+		      		this.shoppingId = [];
+		          	if ( numberTotal <= 0 ) {
+		          		this.isHadGoods = false;
+		          	}
+		          	this.calcTotal();
+	          	} else {
+	          		this.$store.commit("alert",{show:true,text:returnData['message']});               
+	          	}
+	      	});
+	  	},
+	  	selShopcart	: function(agentId){
+	  		this.shoppingData['agentGoodsNumber'][agentId]['number'] = ( event.target.checked ) ? 
+	  			++this.shoppingData['agentGoodsNumber'][agentId]['number']: 
+	  			--this.shoppingData['agentGoodsNumber'][agentId]['number'];
+	  		if ( this.shoppingData['agentGoodsNumber'][agentId]['number'] == this.shoppingData['agent'][agentId]['number'] ) {
+	  			this.agentId.push(agentId);
+	  		} else {
+	  			this.agentId.splice(this.agentId.indexOf(agentId), 1);
+	  		}
+	  		if( this.agentId.length == this.list.length ){
+		  			this.AllCheck = "AllCheck";
+		  	}else{
+		  		this.AllCheck = "";
+		  	}
+		  	this.calcTotal();
+	  	},
+	  	selThisShopAll : function(agentId){
+	  		var agentData = this.shoppingData['agent'][agentId]['goods'];
+	  		if( event.target.checked ){
+	  			for (var i in agentData) {
+	  				this.shoppingId.push(i);
+	  			}
+		  		if( this.agentId.length == this.list.length ){
+		  			this.AllCheck = "AllCheck";
+		  		}
+		  		this.shoppingData['agentGoodsNumber'][agentId]['number'] = this.shoppingData['agent'][agentId]['number'];
+	  		} else {
+	  			for (var i in agentData) {
+	  				this.shoppingId.splice(this.shoppingId.indexOf(i), 1);
+	  			}
+	  			this.AllCheck = "";
+	  			this.shoppingData['agentGoodsNumber'][agentId]['number'] = 0;
+	  		}
+	  		this.calcTotal();
+	  	},
+	  	selAllShopcart : function(){
+	  		if( event.target.checked ){
+	  			for (var i in this.shoppingData['agent']) {
+	  				this.agentId.push(i);
+	  				for (var j in this.shoppingData['agent'][i]['goods']) {
+	  					this.shoppingId.push(j);
+	  				}
+	  				this.shoppingData['agentGoodsNumber'][i]['number'] = this.shoppingData['agent'][i]['number'];
+	  			}
+	  		}else{
+	  			for (var i = 0; i < this.agentId.length; i++) {
+	  				var agentId = this.agentId[i];
+	  				this.shoppingData['agentGoodsNumber'][agentId]['number'] = 0;
+	  			}
+	  			this.agentId = [];
+	  			this.shoppingId = [];
+	  		}
+	  		this.calcTotal(); 		
+	  	},
+	  	editCart : function(type){
+	  		if ( type == 'edit' ) {
+	  			this.is_edit = 1;
+	  		}else{	  		
+	  			this.is_edit = 0;
+	  			this.calcTotal();  			
+	  		}
+	  	},
+	  	computedNum : function(type,index,ind,id){
+  			var goodsNumber = Number(this.list[index]['goodsList'][ind]['goods_number']);
+	    	if ( type == "sub" && goodsNumber == 1 ) {
+	    		this.$store.commit("alert",{show:true,text:"不能再减啦~"})    			
+	    	} else if ( type == "sub" && goodsNumber > 1 ) {
+	    		--goodsNumber
+	    	} else if ( type == "add" ) {
+	    		++goodsNumber;
+	    	}
+	    	var requestJson = {id: id, goods_number: goodsNumber};
+	    	this.$http.post('/Shop/Shop/editShoppingCart', requestJson, {emulateJSON:true}).then(function(response){
+	    		var returnData = response['data'];
+	          	if( returnData['status'] == "200000" ){
+			    	if ( type == "add" ) {
+			    		this.list[index]['goodsList'][ind]['goods_number'] = goodsNumber;
+			    		this.shoppingData['goods'][id]['goods_number'] = goodsNumber;
+			    	} else {
+		    			this.list[index]['goodsList'][ind]['goods_number'] = goodsNumber;
+		    			this.shoppingData['goods'][id]['goods_number'] = goodsNumber;   	
+			    	}
+	          	} else {                 
+	              	this.$store.commit("alert",{show:true,text:returnData['message']});  
+	          	}
+	    		this.calcTotal();
+
+	      	});
+	    },
+	    changeInstall(install,index,ind,shoppingId){
+	    	this.list[index]["goodsList"][ind]['is_install'] = install;
+	    	this.shoppingData['goods'][shoppingId]['is_install'] = install;
+	    	this.calcTotal();
+	    },
+	    calcTotal(){
+	    	console.log(this.shoppingData);
+	    	console.log(this.shoppingId);
+	    	this.total = 0;
+	    	for (var i = 0; i < this.shoppingId.length; i++) {
+	    		var goodsData = this.shoppingData['goods'][this.shoppingId[i]];
+	    		this.total += goodsData['goods_price'] * goodsData['goods_number'] + ( goodsData['is_install'] == '1' ? goodsData['install_price'] : 0 );
+	    	}
+	    },
+	    orderInfo(){
+	    	if(this.shoppingId.length < 1){
+	    		this.$store.commit('alert',{show:true,text:'请选择商品'});
+	    		return;
+	    	}
+	    	var ids = this.shoppingId.join(',');
+	    	var install = [];
+	    	for (var i = 0; i < this.shoppingId.length; i++) {
+	    		var goodsData = this.shoppingData['goods'][this.shoppingId[i]];
+	    		install[i] = {};
+	    		install[i]['goods_id'] = goodsData['goods_id'];
+	    		install[i]['install'] = goodsData['is_install'];
+	    	}
+	    	install = JSON.stringify(install);
+	    	this.$router.push('/orderInfo?ids=' + ids + '&install=' + install);
+	    },
+	}
+
+}
+</script>

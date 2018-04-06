@@ -1,0 +1,549 @@
+<template>
+    <div class="content" id="Jcontent">
+      <div class="index_wrap">
+        <div class="swiper-search-wrap">
+          <div class="search">
+            <div class="search_box">
+              <router-link to="/searchGoods">
+                <em></em>
+                <input type="text" name="" value="请输入搜索产品" readonly="readonly">
+              </router-link>
+            </div>
+            <router-link to="/selectCity" class="dwcity">
+              <span>{{region_name}}</span>
+              <em></em>
+            </router-link>
+            <router-link to="/messageIndex" class="ia" :class="{on: notRead}"></router-link>
+          </div>
+            <!-- 轮播图片 -->
+            <div class="swiper-container" style="height: auto">  
+                <swiper auto dots-position="right">
+                  <template v-for="(pic,index) in bannerList">
+                    <swiper-item class="black" v-if="pic['type'] == '0'">
+                      <router-link :to="{name:'bannerDetail',query:{id:pic['id']}}">
+                        <img class="Sw-img" :src="pic.image">
+                      </router-link>
+                    </swiper-item>
+                    <swiper-item class="black" v-else-if="pic['type'] == '1'">
+                      <a :href="pic.url" v-if="wechatAgent === true">
+                        <img class="Sw-img" :src="pic.image">
+                      </a>
+                      <a :href="pic.url" v-if="android === true">
+                        <img class="Sw-img" :src="pic.image">
+                      </a>
+                      <a href="javascript:;" v-if="iphone === true" @click="blank(pic.title,pic.url)">
+                        <img class="Sw-img" :src="pic.image">
+                      </a>
+                    </swiper-item>
+                    <swiper-item class="black" v-else-if="pic['type'] == '2'">
+                      <router-link :to="{name:'shopDetails',query:{id:pic['url']}}">
+                        <img class="Sw-img" :src="pic.image">
+                      </router-link>
+                    </swiper-item>
+                    <swiper-item class="black" v-else-if="pic['type'] == '3'">
+                      <router-link :to="{name:'goodsDetail',query:{id:pic['url']}}">
+                        <img class="Sw-img" :src="pic.image">
+                      </router-link>
+                    </swiper-item>
+                    <!-- <swiper-item class="black" v-else-if="pic['type'] == '4'">
+                      <router-link :to="pic.url">
+                        <img class="Sw-img" :src="pic.image">
+                      </router-link>
+                    </swiper-item> -->
+                  </template>
+                </swiper>                    
+            </div>
+          </div>
+          <div class="index_type">
+            <div class="i_typeList">
+              <template v-for="(data,index) in agentCategory">
+                <router-link :to="{name: 'experiencePavilion', query: {category_path: data['category_path'], category_name: data['category_name']}}" class="iType">
+                    <img :src="data['app_icon'] | imagedefault" class="type_img"> 
+                    <p>{{data['category_name']}}</p>
+                </router-link>
+              </template>
+              <router-link to="/decorationInformation" class="iType">
+                <img src="../assets/images/home_zxzx_icn@2x.jpg" class="type_img"> 
+                <p>装修攻略</p>
+              </router-link>
+              <a href="javascript:;" class="iType">
+                <img src="../assets/images/home_ssy_icn@2x.jpg" class="type_img"> 
+                <p>线下活动</p>
+              </a>
+              <!-- <router-link to="/signin" class="iType">
+                <img src="../assets/images/home_qd_icn@2x.png" class="type_img"> 
+                <p>签到</p>
+              </router-link> -->
+            </div>
+          </div>
+          <div class="code-login-index" v-if="is_login">
+            <a :href="indexInboundLink" v-if="wechatAgent === true" class="bg">
+              <img src="../assets/images/codebg.jpg" alt="" class="jsonbg">
+            </a>
+            <a :href="indexInboundLink" v-if="android === true" class="bg">
+              <img src="../assets/images/codebg.jpg" alt="" class="jsonbg">
+            </a>
+            <a href="javascript:;" v-if="iphone === true" @click="blank('活动详情', indexInboundLink)" class="bg">
+              <img src="../assets/images/codebg.jpg" alt="" class="jsonbg">
+            </a>
+            <img class="jsonbtn" src="../assets/images/jsoncode.png" @click="openPop">
+          </div>
+          <router-link to="/login" tag="div" class="ad-login-index" v-else>
+            <img :src="notLoginAd" alt="">
+          </router-link>
+          <div class="yycolumn">
+            <router-link to="/flashSale">
+              <div class="icolTop">
+                  <span></span>
+                    限时抢购
+                  <div class="icol">
+                    好货轮番秒
+                  </div>
+              </div>
+            </router-link>
+            <div class="igoodsMain">
+              <ul>
+                <li v-for="(item,index) in saleGoodsList">
+                  <router-link :to="{name: 'goodsDetail', query: {sale_id: item['sale_id'], id: item['goods_id']}}">
+                    <div class="imgbox">
+                      <img :src="item.goods_image">
+                    </div>
+                    <p class="gt">{{item.goods_name}}</p>
+                    <div class="ppt">
+                      <span>￥{{item.promotion_price}}元</span>
+                      <span class="buy">￥{{item.goods_price}}元</span>
+                      <div class="count"><span>{{item.hour}}</span>:<span>{{item.min}}</span>:<span>{{item.sec}}</span></div>
+                    </div>
+                  </router-link>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="yycolumn">
+            <router-link to="/dailyDeal">
+              <div class="icolTop">
+                <span></span>
+                每日特惠 每天0点更新
+              </div>
+            </router-link>
+            <div class="igoodsMain">
+                <ul>
+                  <li v-for="(daily,index) in dailyGoodsList">
+                    <router-link :to="{name: 'goodsDetail', query: {daily_id: daily['daily_id'], id: daily['goods_id']}}">
+                      <div class="imgbox">
+                        <img :src="daily.goods_image">
+                      </div>
+                      <p class="gt">{{daily.goods_name}}</p>
+                      <div class="ppt"><span>￥{{daily.promotion_price}}元</span><span class="buy rt">￥{{daily.goods_price}}元</span>
+                      </div>
+                    </router-link>
+                  </li>                            
+                </ul>
+            </div>
+          </div>
+          <div class="yycolumn">
+            <div class="icolTop icolNone">
+              <span></span>
+              最新推荐
+            </div>
+            <div class="igoodsMain">
+                <ul>
+                  <li v-for="(gl,index) in goodsList">
+                    <router-link :to="{path:'/goodsDetail',query:{id:gl.id}}">
+                      <div class="imgbox">
+                        <img :src="gl.goods_image">
+                      </div>
+                      <p class="gt">{{gl.goods_name}}</p>
+                      <div class="ppt"><span>￥{{gl.goods_price}}元</span><span class="buy ys">已售{{gl.sale_number}}件</span>
+                      </div>
+                    </router-link>
+                  </li>                          
+                </ul>
+                <p class="nomore" v-if="nomore == 1">已经到底啦~</p>
+            </div>
+          </div>
+      </div>
+      <!-- 新人大礼包 -->
+      <div class="indPackage" v-if="open == 1">
+          <div class="package">
+              <div class="ipackbox">
+                  <div class="ipal" v-for="(pal,index) in giftList">
+                      <h1>{{pal.coupon_value}}元</h1>
+                      <p>{{pal.coupon_name}}</p>
+                  </div>                  
+                  <a href="javascript:;" class="ipaget" @click="getGiftPackage('get')">立即领取</a>
+              </div>
+              <div class="ipdtitle">
+                  <img src="../assets/images/wdl_dlb_pic.png">
+              </div>
+              <div class="ipdclose">
+                  <div class="ipdline"></div>
+                  <div class="ipdcimg" @click="getGiftPackage('close')">
+                      <img src="../assets/images/xclb_dl_qx@2x.png">
+                  </div>
+              </div>
+          </div>
+      </div>
+      <!-- 二维码 -->
+      <div class="pop-json" v-if="isshowcode" @click="closePop">
+        <img :src="jsoncode">
+      </div>
+      <!-- 领取成功 -->
+      <!-- 弹窗 -->
+      <div class="mmomask" v-if="getted == 1">
+          <div class="mmadelBox">
+              <p>领取成功，优惠券已到账</p>
+              <div class="btn">
+                  <span @click="stayHere">逛一逛</span>
+                  <router-link to="/myCoupons" class="isa">去看看</router-link>
+              </div>
+          </div>
+     </div>
+      <!-- 回到顶部 -->
+      <div class="totop" @click="totop"></div>           
+    </div>
+</template>
+<script>
+import {Swiper,SwiperItem}from 'vux/src/components/swiper'
+
+export default {
+  data () {
+    return {
+        session_id : localStorage.session_id,
+        bannerList : [],
+        saleGoodsList : [],
+        dailyGoodsList : [],
+        goodsList : [],
+        hasAjax:0,
+        page : 1,
+        nomore : 0,
+        giftList : [],
+        open : 0,
+        getted : 0,
+        agentCategory : [],
+        counterId : '',
+        region_name : localStorage.region_name,
+        notRead : false,
+        userAgent : navigator.userAgent.toLowerCase(),
+        wechatAgent : false,
+        iphone : false,
+        android : false,
+        notLoginAd:'',
+        jsoncode:'',
+        isshowcode:false,
+        is_login: false,
+        indexInboundLink : '',
+    }
+  },
+  beforeCreate(){
+    this.$store.commit('imini');
+  },
+  created(){
+      this.$store.commit('loading',{show:true,text:'加载中...'});
+      var ua = navigator.userAgent.toLowerCase();
+      if (ua.indexOf('micromessenger') == -1) {
+          if (ua.indexOf('iphone') != -1 || ua.indexOf('ipad') != -1 || ua.indexOf('ipod') != -1) {
+              this.iphone = true;
+              this.android = false;
+          } else {
+              this.iphone = false;
+              this.android = true;
+          }
+          this.wechatAgent = false;
+      } else {
+          this.wechatAgent = true;
+      }
+      this.getadJson();
+      this.getPackage();
+      this.getIndexBanner();
+      this.getAgentCategory();
+      this.initRegionName();
+      window.onLocationSuccessful = this.onLocationSuccessful;
+      this.onLocationSuccessful(23.12775, 113.38831, '广州市');
+  },
+  components : {
+      Swiper,
+      SwiperItem
+  },
+  filters:{
+    imagedefault(value){
+      if(value ==''){
+        var returndata = 'http://placehold.it/350x350';
+        return returndata;
+      }else{
+        return value;
+      }
+    }
+  },
+  watch : {
+    '$store.state.messageData':'initMessage',
+  },
+  mounted(){
+      this.loadMore();
+      let self = this;
+      this.counterId = setInterval(function(){
+          self.counter();
+      }, 1000);
+      this.$store.commit('loading',{show:false});
+  },
+  beforeDestroy(){
+      clearInterval(this.counterId);
+  },
+  methods: {
+      getIndexBanner(){        
+          this.$http.post('/Shop/Index/indexBanner', {},{emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              console.log(returnData);
+              if( returnData['status'] == "200000" ){
+                  this.bannerList = returnData['data']['list'];                 
+              }
+              if ( returnData['data']['is_temp'] == 0 ) {
+                  var from = 'yjwy' + returnData['data']['user']['id'];
+                  if ( this.wechatAgent === true ) {
+                    this.$store.commit('imlogin', {userId : from, passWord: from});
+                  }
+                  // this.$store.commit('imlogin', {userId : from, passWord: from});
+                  this.getUserInfo();
+                  this.initMessage();
+                  this.notReadMessage();
+                  this.is_login = true;
+              }
+              this.getIndexSaleGoods();    
+          }); 
+      },
+      getIndexSaleGoods(){
+          this.$http.post('/Shop/Promotion/indexSaleGoods', {},{emulateJSON:true}).then(function(response){
+              if( response.data.status == "200000" ){
+                  this.saleGoodsList = response.data.data.list;                      
+              }    
+              this.getIndexDailyGoods();
+          });
+      },
+      getIndexDailyGoods(){
+          this.$http.post('/Shop/Promotion/indexDailyGoods', {},{emulateJSON:true}).then(function(response){
+              if( response.data.status == "200000" ){
+                  this.dailyGoodsList = response.data.data.list;                     
+              }                 
+          });
+          this.getGoodsList();
+      },
+      getGoodsList : function(){
+        if( this.hasAjax == 0 ){
+          this.hasAjax = 1;
+          this.$http.post('/Shop/Goods/goodsList', {page:this.page},{emulateJSON:true}).then(function(response){ 
+            this.hasAjax = 0;
+            if( this.page == 0 ){
+              this.goodsList = response.data.data.list;
+              this.page++;              
+            }else{
+              if( response.data.data.list.length == 0 ){                
+                this.hasAjax = 1;
+                this.nomore = 1;
+              }else{
+                this.page++;
+                this.goodsList = this.goodsList.concat(response.data.data.list);
+              }
+            }
+            this.$store.commit('loading',{show:false});                               
+            });
+
+        }
+      },
+      loadMore(){         
+          var that = this;
+          this.$store.commit('scrollFun',{dom:"Jcontent",auto:true,bottomCall:function(){           
+            that.getGoodsList();
+          }})
+      },
+      getPackage : function(){
+          if( !localStorage.open ) {
+              localStorage.open = 1;
+          }
+          this.open = localStorage.open;
+          this.$http.post('/Shop/Coupon/giftPackage', {},{emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if( returnData.status == "200000" ){
+                  this.giftList = returnData.data.list;
+                  if( returnData.data.list.length == 0 ){
+                      this.open = 0;
+                  }
+              }    
+          });
+      },
+      getGiftPackage : function(type){
+          if( type == 'get' ){
+              this.$http.post('/Shop/Coupon/getGiftPackage', {},{emulateJSON:true}).then(function(response){
+                  if( response.data.status == "200000" ){
+                      this.getted = 1;                   
+                  }    
+              });
+          }else{
+              localStorage.open = 0;
+              this.open = 0;
+          }
+      },
+      getAgentCategory(){
+          this.$http.post('/Shop/Agent/agentCategory', {}, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if( returnData['status'] == "200000" ){
+                  this.agentCategory = returnData['data']['list'];
+              }    
+          });
+      },
+      totop(){
+          var timer = null;
+          timer = setInterval(function(){
+              var _top = document.body.scrollTop + document.documentElement.scrollTop;
+              var speed = _top/5;
+              if( document.body.scrollTop ){
+                  document.body.scrollTop -= speed; 
+              }else{                  
+                  document.documentElement.scrollTop -= speed;
+              }
+              if( _top == 0){
+                  clearInterval(timer);
+              }
+          },20)
+      },
+      getUserInfo : function(){
+          this.$http.post('/Shop/User/userInfo', {session_id:this.session_id},{emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if ( returnData['data']['list']['is_get_gift'] == '1' ) {
+                  localStorage.open = 0;
+                  this.open = 0;
+              }
+          });
+      },
+      stayHere : function() {
+          this.getGiftPackage('close');
+          this.getted = 0;
+      },
+      counter(){
+          let now = new Date().getTime();
+          let goodsData = [];
+          for (var i = 0; i < this.saleGoodsList.length; i++) {
+              let data = this.saleGoodsList[i],
+                  endTime = Number(data['sale_end_time'] * 1000);
+              goodsData[i] = {};
+              goodsData[i] = data;
+              goodsData[i]['hour'] = this.timestampToTime((endTime - now), 0);
+              goodsData[i]['min'] = this.timestampToTime((endTime - now), 1);
+              goodsData[i]['sec'] = this.timestampToTime((endTime - now), 2);
+          }
+          this.saleGoodsList = goodsData;
+      },
+      timestampToTime(timestamp, type){
+          let time;
+          let hour = parseInt(timestamp/1000/3600);
+          let min = parseInt((timestamp/1000 - hour * 3600)/60);
+          let sec = parseInt(timestamp/1000 - hour * 3600 - min * 60)
+          switch ( type ) {
+              case 0 :
+                  time = hour;
+                  break;
+              case 1 :
+                  time = min;
+                  break;
+              case 2 :
+                  time = sec;
+                  break;
+          }
+          return time;
+      },
+      initRegionName(){
+          var region_name = localStorage.region_name;
+          if ( !region_name ) {
+              localStorage.region_name = '贵阳';
+              localStorage.region_id = '111';
+              this.region_name = localStorage.region_name;
+          }
+      },
+      notReadMessage(){
+          this.$http.post('/Shop/Message/notReadMessage', {}, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if( returnData.status == 200000 ){
+                this.notRead = ( parseInt(returnData['data']['list']) > 0 ) ? true : false;
+                if( this.notRead !== true)
+                  this.initMessage();
+              }
+          });
+      },
+      //保证停在首页时显示红点
+      initMessage(){
+          var messageList = localStorage.messageList;
+          if ( messageList ) {
+              messageList = JSON.parse(messageList);
+              var total = 0;
+              for ( var i=0; i<messageList.length; i++ ) {
+                 var data = messageList[i];
+                 total += parseInt(data['total']);
+              }
+              this.notRead = ( total > 0 ) ? true : false;
+          }
+          else
+            this.notRead = false;
+      },
+      blank(title,url){
+          var title = encodeURI(title),
+          uri = encodeURIComponent(url);
+          window.location.href = "mitchell://blank?url="+ uri +"&title="+ title;
+      },
+      onLocationSuccessful(lat,lng,city){
+        this.$http.post('/Shop/Region/getCity', {},{emulateJSON:true}).then(function(response){
+            var returnData = response['data'];
+            if( returnData['status'] == "200000" ){
+                var cityList = returnData['data']['list'];
+                var is_end = true;
+                for( var i=0; i<cityList.length; i++ ) {
+                    var region_name = cityList[i].region_name;
+                    if ( city.indexOf(region_name) != '-1' ) {
+                        this.region_name = region_name;
+                        localStorage.region_name = region_name;
+                        localStorage.region_id = cityList[i].id;
+                        localStorage.longitude = lng;
+                        localStorage.latitude = lat;
+                        is_end = false;
+                        break;
+                    }
+                }
+                if( is_end ){
+                    localStorage.region_name = '贵阳';
+                    localStorage.region_id = '111';
+                    localStorage.longitude = 106.63;
+                    localStorage.latitude = 26.65;
+                    this.region_name = localStorage.region_name;
+                }
+            }
+        });
+      },
+      openPop(){
+        this.isshowcode = true;
+      },
+      closePop(){
+        this.isshowcode = false;
+      },
+      getadJson(){
+          this.$http.post('/Shop/Index/indexActivity', {}, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if( returnData.status == 200000 ){
+                  this.notLoginAd = returnData['data']['indexNotLoginAd'];
+                  this.jsoncode = returnData['data']['userQrCode'];
+                  this.indexInboundLink = returnData['data']['indexInboundLink'];
+              }
+          });
+      }
+  }
+
+}
+</script>
+<style>
+  .ad-login-index{ width:100%; margin: 15px 0 10px 0; overflow: hidden;}
+  .ad-login-index img{ width: 100%;}
+  .code-login-index{ overflow: hidden; margin: 15px 0 10px 0; position: relative; }
+  .code-login-index .bg{ width: 100%; position: relative; display: block; }
+  .code-login-index .bg .jsonbg{ width: 100%; }
+  .code-login-index .jsonbtn{ position: absolute; top: 0; width: 28%; left: 2%; z-index: 2;}
+  .pop-json{ width: 100%; height: 100%; top: 0; left: 0; position: fixed; background: rgba(0,0,0,0.6); z-index: 22;}
+  .pop-json img{ width: 60%; position: absolute; top: 50%; margin-top: -30%; left: 50%; margin-left:-30%;}
+
+</style>

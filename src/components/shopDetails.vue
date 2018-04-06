@@ -1,0 +1,237 @@
+<template>
+  	<div class="content"  id="shopDetails">
+    		<header class="head">
+    				<a @click="jumpToUrl" class="back"></a>
+    				<h1 class="y-confirm-order-h1">{{agentDetail['agent_name']}}</h1>
+            <span class="collect" v-bind:class="{on: isCollect}" @click="collectAgent"></span>
+  		  </header>
+        <div class="main">
+            <div class="shopWarp">
+                <div class="sd-top">
+                    <div class="imgbox">
+                        <img :src="agentDetail['logo']">
+                    </div>
+                    <div class="sd-msg">
+                        <p class="name db-overflow">{{agentDetail['agent_name']}}</p>
+                        <p class="level">{{agentDetail['level_name']}}</p>
+                        <div class="address"><em>{{agentDetail['distance']}}m</em> <span  @click="jumpToNav(agentDetail['latitude'],agentDetail['longitude'],agentDetail['address'])">{{agentDetail['address']}}</span></div>
+                    </div>
+                </div>
+                <div class="sd-cont">
+                    <div class="sdnav">
+                        <span v-bind:class="{on: firstTags}" @click="selectTags(0)">店铺信息<em></em></span>
+                        <span v-bind:class="{on: secondTags}" @click="selectTags(1)">全部商品<em></em></span>
+                    </div>
+                    <div class="sdmain">
+                        <!-- 店铺介绍 -->
+                        <div class="sdintroduce" v-if="firstTags == true">
+                            <ul>
+                                <li>
+                                  <h1 class="sd-title">店铺介绍</h1>
+                                  <div class="incont" v-html="agentDetail['introduction']"></div>
+                                </li>
+                                <li>
+                                  <h1 class="sd-title" @click="jumpToPanorama(agentDetail['panorama'])">全景逛店</h1>
+                                  <div class="incont">
+                                  </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- 全部商品 -->
+                        <div class="sdgoods" v-if="secondTags == true">
+                          <div class="igoodsMain">
+                            <ul>
+                              <li v-for="(data,index) in goodsList">
+                                <router-link :to="{path:'/goodsDetail', query:{id:data['id']}}">
+                                  <div class="imgbox">
+                                    <img :src="data['goods_image']">
+                                  </div>
+                                  <p class="sgt db-overflow">{{data['goods_name']}}</p>
+                                  <div class="ppt"><span>￥{{data['goods_price']}}元</span>
+                                  <!-- <span class="buy">￥39元</span> -->
+                                  </div>
+                                </router-link>
+                              </li>         
+                            </ul>
+                            <p class="nomore" v-if="nomore == true">已经到底啦~</p>
+                          </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sd-bottom">
+                <div class="sdbooyom">
+                    <router-link :to="{path:'/receiveCoupons', query:{agent_id:this.$route.query.id,agent_name:this.agentDetail.agent_name}}">
+                      <div class="pr"><span class="coupon">优惠券</span></div>
+                    </router-link>
+                    <a href="javascript:;" @click="jumpToChat">
+                      <span class="call">联系客服</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+      return {
+          url : (this.$route.query.url) ? this.$route.query.url : '',
+          dataJson : {id:this.$route.query.id},
+          agentDetail : {},
+          firstTags : true,
+          secondTags : false,
+          goodsList : [],
+          goodsJson : {
+              id : this.$route.query.id,
+              page : 0
+          },
+          nomore : false,
+          loadData : true,
+          isCollect : false,
+          collectId : '',
+          userAgent : navigator.userAgent.toLowerCase(),
+          wechatAgent : false,
+          userInfo : {},
+          iphone : false,
+          android : false,
+          is_temp : 1,
+      }
+  },
+  created(){
+      var ua = navigator.userAgent.toLowerCase();
+      if (ua.indexOf('micromessenger') == -1) {
+        if (ua.indexOf('iphone') != -1 || ua.indexOf('ipad') != -1 || ua.indexOf('ipod') != -1) {
+          this.iphone = true;
+          this.android = false;
+        } else {
+          this.iphone = false;
+          this.android = true;
+        }
+      }
+      this.wechatAgent = ( this.userAgent.indexOf('micromessenger') != -1 ) ? true : false;
+      this.getAgentDetail();
+      this.getGoodsList();
+      this.selectTags(1);
+  },
+  computed: {
+    
+  },
+  mounted(){
+      this.loadMore();
+  },
+  methods: {
+      getAgentDetail(){
+          var that = this;
+          that.dataJson.longitude = localStorage.longitude;
+          that.dataJson.latitude = localStorage.latitude;
+          that.$http.post('/Shop/Agent/agentDetail', that.dataJson,{emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              that.agentDetail = returnData['data']['list']['agentDetail'];
+              that.isCollect = ( returnData['data']['list']['is_collect'] == '1' ) ? true : false;
+              that.collectId = returnData['data']['list']['collect_id'];
+              that.userInfo = returnData['data']['user'];
+              that.is_temp = returnData['data']['is_temp'];
+              console.log(returnData);
+          });
+      },
+      selectTags(tags){
+          if ( tags == 0 ) {
+              this.firstTags = true;
+              this.secondTags = false;
+          } else {
+              this.firstTags = false;
+              this.secondTags = true;
+          }
+      },
+      getGoodsList(){
+          var that = this;
+          if ( that.loadData == true ) {
+              that.loadData = false;
+              that.goodsJson.page++;
+              that.$http.post('/Shop/Agent/agentGoods', that.goodsJson, {emulateJSON:true}).then(function(response){
+                  var returnData = response['data'];
+                  if ( returnData['data']['list'].length ) {
+                      that.goodsList = ( that.goodsList.length ) ? that.goodsList.concat(returnData['data']['list']) : returnData['data']['list'];
+                  } else {
+                      if ( that.goodsList.length ) {
+                          that.nomore = true;
+                      }
+                  }
+                  that.$nextTick(function () {
+                      that.loadData = true;
+                  })
+              });
+          }
+      },
+      loadMore(){         
+          var that = this;
+          that.$store.commit('scrollFun',{dom:'shopDetails',auto:true,bottomCall:function(){           
+              if ( that.nomore == false ) {
+                  that.getGoodsList();
+              }
+          }})
+      },
+      collectAgent(){
+          var that = this;
+          if ( that.collectId != '0' ) {
+              var requestJson = {ids:that.collectId,type:1};
+              that.$http.post('/Shop/Collect/delCollect', requestJson, {emulateJSON:true}).then(function(response){
+                  var returnData = response['data'];
+                  if ( returnData['status'] == '200000' ) {
+                      that.isCollect = false;
+                      that.collectId = '0';
+                  } else {
+                      that.$store.commit('alert', {show:true,text:returnData['message']});
+                  }
+              });
+          } else {
+              var requestJson = {id:that.dataJson.id,type:1};
+              that.$http.post('/Shop/Collect/toCollect', requestJson, {emulateJSON:true}).then(function(response){
+                  var returnData = response['data'];
+                  if ( returnData['status'] == '200000' ) {
+                      that.isCollect = true;
+                      that.collectId = returnData['data']['collect_id'];
+                  } else {
+                      that.$store.commit('alert', {show:true,text:returnData['message']});
+                  }
+              });
+          }
+      },
+      jumpToPanorama(url){
+        if ( this.android === true ) {
+          window.location.href = url;
+        } else {
+          var title = encodeURI('全景逛店'),
+          uri = encodeURIComponent(url);
+          window.location.href = "mitchell://blank?url="+ uri +"&title="+ title;
+        }
+      },
+      jumpToUrl(){
+        if(this.url == 'trackShop')
+          this.$router.push({path: '/myTracks',query:{agentShow : true,goodsShow : false}});
+        else if(this.url == 'collectionShop')
+          this.$router.push({path: '/myCollection',query:{is_tab:'shop'}});
+        else
+          window.history.go(-1);
+      },
+      jumpToChat(){
+          if( this.is_temp == 1 ) {
+              this.$router.push('/login');
+          } else {
+              if( this.wechatAgent == true ) {
+                  this.$router.push({name:'consultation', query:{uid:this.userInfo['id'],aid:this.agentDetail['user_id'],aname:this.agentDetail['agent_name'],isNeedGoods:0}});
+              } else {
+                  window.location.href = 'mitchell://chat?user_id='+ this.agentDetail['user_id'] +'&nickname='+ this.agentDetail['agent_name'] +'&headimgurl='+ this.agentDetail['logo'];
+              }
+          } 
+      },
+      jumpToNav(lat,lng,address){
+        window.location.href = "mitchell://navigation?lat="+ lat +"&lng="+ lng + "&poiName=" + address;
+      }
+  }
+
+}
+</script>
+

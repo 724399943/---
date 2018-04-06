@@ -1,0 +1,558 @@
+<template>
+	<div class="content">
+		<header class="head gdhead">
+			<a href="javascript:window.history.go(-1);" class="back"></a>
+			<div class="ggNav">
+				<span :class="{on:is_tab == 'goods'}" @click="positionTab('goods')">商品</span>
+				<span :class="{on:is_tab == 'evaluate'}" @click="positionTab('evaluate')">评价</span>
+				<span :class="{on:is_tab == 'detail'}" @click="positionTab('detail')">详情</span>
+			</div>
+			<span class="gscar white" :class="{on : isCollect == 1}" @click="collectGoods"></span>
+			<span class="share" @click="shareFun('open')" v-if="wechatAgent == false"></span>
+		</header>
+		<div class="main">
+			<div class="goodsDetail_m">
+				<div class="ggoodsImg_wrap">
+					<div class="goods_img_cont">
+						<swiper auto dots-position="center" v-model="slideNum">
+							<template v-for="(pic,index) in goodsImages ">
+							    <swiper-item class="black" >
+									<div class="goods_img_box"">
+										<img :src="pic">
+									</div>
+							    </swiper-item>						   
+							</template>
+						</swiper>
+					</div>
+					<div class="slide_num">{{slideNum+1}}/{{goodsImages.length}}</div>
+				</div>
+				<div class="goods_msg">
+					<p class="name db-overflow">{{goodsInfo.goods_name}}</p>					
+					<div class="g_msg_tt">
+						<span v-if="shoppingCartJson.sale_id == '0' && shoppingCartJson.daily_id == '0'">￥{{goodsInfo.goods_price}}</span>
+						<div v-else-if="shoppingCartJson.daily_id != '0' && dailyDealGoodsData.status == '1'">
+							<span>￥{{dailyDealGoodsData.promotion_price}}</span>
+							<em>特惠价</em>
+							<span class="old">￥{{goodsInfo.goods_price}}</span>
+						</div>
+						<div v-else-if="shoppingCartJson.sale_id != '0' && saleGoodsData.status == '1'">
+							<span>￥{{saleGoodsData.promotion_price}}</span>
+							<em>限时抢购</em>
+							<span class="old">￥{{goodsInfo.goods_price}}</span>
+							<div class="p-salenum">
+								<div class="state">
+			                    	<div class="total"></div>
+			                    	<div class="sale" :style="{width: saleGoodsData['sale_percent'] + '%'}"></div>
+			                    	<span class="num">已抢{{saleGoodsData['sale_percent']}}%</span>
+			                    </div>
+							</div>
+						</div>
+						<p>已售:{{goodsInfo.sale_number}}个</p>
+					</div>
+				</div>
+				<div class="goods_fuwu">
+					<div class="gt" v-if="goodsInfo['can_install'] == '1'">
+						<div class="cb">
+							<div class="check_box">
+								<input type="checkbox" id="select" @click="chooseInstall" checked>
+								<label for="select"></label>
+							</div>
+						</div>
+						<div class="tt">
+							<span>上门安装</span>
+							<span>￥ : {{goodsInfo['install_price']}}</span>
+						</div>
+					</div>
+					<div class="gm">
+						<div class="gtext" v-if="goodsInfo.goods_attr == 0">成品</div>
+						<div class="gtext on" v-else>非标商品</div>
+						<div class="gtext on" v-if="goodsInfo.can_install == 0">不支持上门安装</div>
+						<div class="gtext" v-else>上门安装</div>
+						<div class="gtext on" v-if="goodsInfo.can_return == 0">不支持退货</div>
+						<div class="gtext" v-else>支持退货</div>
+					</div>
+					<div class="select_g_t">
+						<div class="s_g_t" @click="buynow">
+							<span>{{chooseDescription}}</span>
+							<em></em>
+						</div>
+					</div>
+				</div>
+				<div class="goods_assess" id="Jevaluate">
+					<router-link :to="{path: 'allEvaluation', query: {id:this.goodsID}}">
+						<div class="tt">商品评价({{goodsInfo.comment_number}})<span>{{goodsInfo.star}}分</span><em></em></div>
+					</router-link>
+					<div class="g_assess_cont" v-if="goodsInfo.comment_number > 0">
+						<div class="eva_list_box" v-for="(data,index) in commentList">
+							<div class="user_eva">
+								<div class="eva_top">
+									<div class="eva_user">
+										<img :src="data.headimgurl">
+										<span>{{data.nickname}}</span>
+									</div>
+									<div class="eva_star_cont">
+										<div class="eva_star_box" :class="{on : data.star>=1}"></div>
+										<div class="eva_star_box" :class="{on : data.star>=2}"></div>
+										<div class="eva_star_box" :class="{on : data.star>=3}"></div>
+										<div class="eva_star_box" :class="{on : data.star>=4}"></div>
+										<div class="eva_star_box" :class="{on : data.star>=5}"></div>
+									</div>
+								</div>
+								<p>{{data.contain}}</p>
+								<div class="eva_goods_cont">
+									<span>{{data.add_time | time}}</span>									
+								</div>
+								<div class="eva-imgbox">
+									<div class="imgbox" v-for="(ei,imageIndex) in data.images">
+										<img :src="ei">
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- 没评价 -->
+					<div class="g_assess_cont" v-else>
+						<p class="notext">该商品还没有评价~</p>
+					</div>
+				</div>
+				<div class="goods_store">
+					<router-link :to="{path:'/shopDetails', query:{id:goodsInfo['agent_id']}}">
+						<div class="imgbox">
+							<img :src="agentInfo.logo">
+						</div>
+						<p class="db-overflow">{{agentInfo.agent_name}}</p>
+						<em></em>
+					</router-link>
+				</div>
+				<div class="goods_detail" id="Jdetail">
+					<div class="g_de_t">
+						<em class="lf"></em>
+						<span>商品详情</span>
+						<em class="rt"></em>
+					</div>
+					<div class="detailCont" v-html="goodsDesc">
+						
+					</div>
+				</div>
+				<div class="recommend">
+					<h1>- 同类推荐 -</h1>
+					<div class="r-goodsWrap">
+						<div class="rgoods" v-for="(data,index) in similarGoods">
+							<router-link :to="{name:'goodsDetail', query: {id: data['id']}}">
+								<div class="imgbox">
+									<img :src="data['goods_image']">
+								</div>
+								<p class="db-overflow">{{data['goods_name']}}</p>
+								<span>￥: {{data['goods_price']}}</span>
+							</router-link>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="goods_detail_btn">
+				<div class="g_btn">
+					<router-link :to="{name:'consultation', query:{id:goodsID,uid:userInfo['id'],aid:agentInfo['user_id'],aname:agentInfo['agent_name']}}" v-if="wechatAgent == true">
+						<em class="icon"><i></i>客服</em>
+					</router-link>
+					<a :href="'mitchell://chat?user_id='+ agentInfo['user_id'] +'&nickname='+ agentInfo['agent_name'] +'&headimgurl='+ agentInfo['logo']" v-else>
+						<em class="icon"><i></i>客服</em>
+					</a>
+					<router-link :to="{name:'shopDetails', query:{id:goodsInfo['agent_id']}}">
+						<em class="icon"><i></i>店铺</em>
+					</router-link>
+					<router-link :to="{name:'shoppingCart',query:{isNeedFooter:'0'}}">
+						<em class="icon"><i></i>购物车</em>
+					</router-link>
+				</div>
+				<div class="btnm">
+					<div class="g_buybtn" @click="addToCart">加入购物车</div>
+					<div class="g_addbtn" @click="buynow">立即购买</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- 选择规格 -->
+		<div class="gdselSize" :class="{ fadeIn : isSelect == 1,fadeOut : isSelect == 0 }">
+			<div class="selsizeWrap" :class="{ slideUp : isSelect == 1,slideDown : isSelect == 0}">
+				<div class="gdsgoods">
+					<div class="imgbox">
+						<img :src="skuGoods['goods_image']">
+					</div>
+					<div class="gdsmsg">
+						<p class="price">￥{{skuGoods['goods_price']}}<span>￥30.00</span></p>
+						<p class="attr">{{chooseDescription}}</p>
+					</div>
+					<div class="gdclose" @click="closeSkuAttr">
+						<img src="../assets/images/login_del_icn@2x.png">
+					</div>
+				</div>
+				<div class="gdsAttr" v-for="(attr,index) in attrNameInfo">
+					<p>{{attr.attr_name}}</p>
+					<ul>
+						<li v-for="(data,dindex) in attr.attrValue" :id="'KattrValue_' + data['id']" @click="chooseAttribute(index,data['id'],data['attr_value'])"><span>{{data['attr_value']}}</span></li>	
+					</ul>
+				</div>				
+				<div class="gdsNum">
+					<span>购买数量</span>
+					<div class="gdsjis">
+						<span @click="computedNum('sub',goodsInfo.goods_number)">-</span>
+						<span class="num">{{shoppingCartJson.goods_number}}</span>
+						<span @click="computedNum('add',goodsInfo.goods_number)">+</span>
+					</div>
+				</div>
+				<a href="javascript:;" class="gdsbuy" @click="buynow" v-if="is_operate == 'buy'">立即购买</a>
+				<a href="javascript:;" class="gdsbuy" @click="addToCart" v-else>加入购物车</a>
+			</div>
+		</div>
+		<!-- 分享弹窗 -->
+		<div class="mask" :class="{ fadeIn:is_share == 1,fadeOut:is_share == 0 }" v-if="is_share == 1" @click="shareFun('close')"></div>
+		<div class="ggshare_window" :class="{ fadeIn:is_share == 1,fadeOut:is_share == 0 }" v-if="is_share == 1">
+			<div class="g_btn">
+				<a @click="share('wechat')">
+					<em class="icon"><i></i>微信好友</em>
+				</a>
+				<a @click="share('wechat_moments')">
+					<em class="icon"><i></i>微信朋友圈</em>
+				</a>				
+				<a @click="share('sina_weibo')">
+					<em class="icon"><i></i>新浪微博</em>
+				</a>
+			</div>			
+		</div>
+  	</div>
+</template>
+<script>
+import {Swiper,SwiperItem}from 'vux/src/components/swiper'
+
+export default {
+
+	data () {
+		return {
+			goodsID : this.$route.query.id,
+			goodsInfo : {},
+			userInfo : {},
+			skuGoods : {},
+			goodsImages : [],
+			slideNum : 0,
+			commentList : [],
+			goodsDesc : "",
+			agentInfo : {},
+			similarGoods : [],
+			isCollect : false,
+			collectId : '',
+			is_share : 0,
+			isSelect : 0,
+			attrNameInfo : [],
+			goodsOn : [],
+			is_operate : "",
+			attrData : [],
+			attrValueData : [],
+			shoppingCartJson : {
+				goods_id : this.$route.query.id,
+				goods_number : 1,
+				is_buy : 0,
+				is_install : 0,
+				sale_id : (this.$route.query.sale_id) ? this.$route.query.sale_id : 0,
+				daily_id : (this.$route.query.daily_id) ? this.$route.query.daily_id : 0,
+			},
+			chooseDescription : '请选择颜色、规格',
+			chooseColor : false,
+			chooseSize : false,
+			is_tab : 'goods',
+			saleGoodsData : {},
+			dailyDealGoodsData : {},
+			userAgent : navigator.userAgent.toLowerCase(),
+			wechatAgent : false,
+			shareUrl : window.location.href,
+			webSite : '',
+		}
+	},
+	created(){
+		this.wechatAgent = ( this.userAgent.indexOf('micromessenger') != -1 ) ? true : false;
+		this.$store.commit('loading',{show:true,text:'加载中...'});
+		this.getData();
+	},
+	components : {
+		Swiper,
+		SwiperItem
+	},
+	mounted(){
+		this.$store.commit('loading',{show:false});   
+	},
+	watch:{
+		'$route'(to,from){
+			this.goodsID = this.$route.query.id;
+			this.goodsInfo = {};
+			this.skuGoods = {};
+			this.goodsImages = [];
+			this.slideNum = 0;
+			this.commentList = [];
+			this.goodsDesc = "";
+			this.agentInfo = {};
+			this.similarGoods = [];
+			this.isCollect = false;
+			this.collectId = '';
+			this.is_share = 0;
+			this.isSelect = 0;
+			this.attrNameInfo = [];
+			this.goodsOn = [];
+			this.is_operate = "";
+			this.attrData = [];
+			this.attrValueData = [];
+			this.shoppingCartJson = {
+				goods_id : this.$route.query.id,
+				goods_number : 1,
+				is_buy : 0,
+				is_install : 0,
+				sale_id : (this.$route.query.sale_id) ? this.$route.query.sale_id : 0,
+				daily_id : (this.$route.query.daily_id) ? this.$route.query.daily_id : 0,
+			};
+			this.chooseDescription = '请选择颜色、规格';
+			this.chooseColor = false;
+			this.chooseSize = false;
+			this.is_tab = 'goods';
+			this.saleGoodsData = {};
+			this.dailyDealGoodsData = {};
+			this.getData();
+			this.shareUrl = window.location.href;
+		}
+	},
+	methods: {
+		getData : function(){
+			var requestJson = {
+				goods_id : this.shoppingCartJson.goods_id,
+				sale_id : this.shoppingCartJson.sale_id,
+				daily_id : this.shoppingCartJson.daily_id,
+			};
+			this.$http.post('/Shop/Goods/goodsDetail', requestJson,{emulateJSON:true}).then(function(response){
+				var returnData = response['data'];
+	      	if( returnData.status == "200000" ){
+	      		this.userInfo = returnData.data.user;
+	        	this.goodsInfo = returnData.data.goodsInfo;  
+	        	this.goodsImages = returnData.data.goodsImages;   
+	        	this.commentList = returnData.data.commentList;    
+	        	this.agentInfo = returnData.data.agentInfo;  
+	        	this.goodsDesc = returnData.data.goodsDesc;  
+	        	this.similarGoods = returnData.data.similarGoods;
+	        	this.isCollect = returnData.data.is_collect;
+	        	this.collectId = returnData.data.collect_id;
+	        	this.skuGoods.goods_image = returnData.data.goodsInfo.goods_image;
+	        	this.skuGoods.goods_price = returnData.data.goodsInfo.goods_price;
+	        	this.webSite = returnData.webSite;
+	        	if ( this.goodsInfo['can_install'] == '1' )
+	        		this.shoppingCartJson.is_install = 1;
+	        	if ( returnData.data.saleGoodsData ) {
+	        		this.saleGoodsData = returnData.data.saleGoodsData;
+	        		this.chooseDescription = '已选' + this.goodsInfo.attr_value;
+	        	} else if ( returnData.data.dailyDealGoodsData ) {
+	        		this.dailyDealGoodsData = returnData.data.dailyDealGoodsData;
+	        		this.chooseDescription = '已选' + this.goodsInfo.attr_value;
+	        	} else {
+		        	this.$nextTick(function () {
+		                this.getSkuAttr();
+		            });
+	        	}
+	      	}
+	  	});
+		},
+		getSkuAttr(){
+			var requestJson = {agent_id: this.goodsInfo.agent_id, relevance_id: this.goodsInfo.relevance_id};
+			this.$http.post('/Shop/Goods/getSkuAttr', requestJson,{emulateJSON:true}).then(function(response){
+				var returnData = response['data'];
+				if( returnData['status'] == "200000" ){
+	        		this.attrNameInfo = returnData['data']['attrNameInfo'];
+	        		this.goodsOn = returnData['data']['goodsOn'];
+				}	   
+	    	});
+		},
+		addToCart : function(){
+			this.is_operate = "addcart";
+			if( this.isSelect == 0 ){
+				this.isSelect = 1;
+			} else {
+				if ( (!this.attrData[0] && !this.attrData[1]  || this.attrData[0] && !this.attrData[1]  || !this.attrData[0] && this.attrData[1]) && this.shoppingCartJson.sale_id == '0' && this.shoppingCartJson.daily_id == '0' ) {
+					this.$store.commit('alert',{show:true,text:this.chooseDescription});
+					return;
+				}
+				this.shoppingCartJson.is_buy = 0;
+				this.isSelect = 0;
+				this.$http.post('/Shop/Shop/addShoppingCart', this.shoppingCartJson, {emulateJSON:true}).then(function(response){
+					var returnData = response['data'];
+		  			if( returnData['status'] == "200000" ){
+		            	this.$store.commit('alert',{show:true,text:returnData['message']});
+		            	this.shoppingCartJson.goods_number = 1;
+		            } else if ( returnData['status'] == '400000' ) {
+		            	this.$store.commit('alert',{show:true,text:returnData['message']});
+		  			} else if ( returnData['status'] == '100000' ) {
+		  				this.$router.push('/login');
+		  			} 
+		        });
+			}
+		},
+		buynow : function(){
+			this.is_operate = "buy";
+			if( this.isSelect == 0 ){
+				this.isSelect = 1;
+			} else {
+				if ( (!this.attrData[0] && !this.attrData[1]  || this.attrData[0] && !this.attrData[1]  || !this.attrData[0] && this.attrData[1]) && this.shoppingCartJson.sale_id == '0' && this.shoppingCartJson.daily_id == '0' ) {
+					this.$store.commit('alert',{show:true,text:this.chooseDescription});
+					return;
+				}
+				this.isSelect = 0;
+				this.shoppingCartJson.is_buy = 1;
+				this.$http.post('/Shop/Shop/addShoppingCart', this.shoppingCartJson, {emulateJSON:true}).then(function(response){
+		  			var returnData = response['data'];
+		  			if( returnData['status'] == "200000" ){
+		  				var queryJson = {
+		  					ids : returnData['data']['id'],
+		  					is_buy : 1,
+		  					install: JSON.stringify([{"goods_id":this.shoppingCartJson.goods_id,"install":this.shoppingCartJson.is_install}])
+		  				};
+		            	this.$router.push({path:'/orderInfo',query:queryJson});
+		            } else if ( returnData['status'] == '400000' ) {
+		            	this.$store.commit('alert',{show:true,text:returnData['message']});
+		  			} else if ( returnData['status'] == '100000' ) {
+		  				this.$router.push('/login');
+		  			}   
+		        });
+			}
+		},
+		chooseAttribute : function(index, attrValueId, attrValue){
+			var object = document.getElementById('KattrValue_' + attrValueId),
+				childrenNode = object.parentNode.getElementsByTagName('li');
+			for (var i = 0; i < childrenNode.length; i++) {
+				childrenNode[i].setAttribute('class', '');
+			}
+			object.setAttribute('class', 'on');
+			this.attrData[index] = attrValueId;
+			this.attrValueData[index] = '"' + attrValue + '"';
+			var attrData = this.attrData.join(',');
+			for (var i =0; i<this.goodsOn.length; i++) {
+				if( attrData === this.goodsOn[i].attr_list ){
+					this.shoppingCartJson.goods_id = this.goodsOn[i].id;
+					this.skuGoods.goods_image = this.goodsOn[i].goods_image;
+	        		this.skuGoods.goods_price = this.goodsOn[i].goods_price;
+				}
+			}
+			if ( !this.attrData[0] && !this.attrData[1] ) {
+				this.chooseDescription = '请选择颜色、规格';
+			} else if ( this.attrData[0] && !this.attrData[1] ) {
+				this.chooseDescription = '请选择规格';
+			} else if ( !this.attrData[0] && this.attrData[1] ) {
+				this.chooseDescription = '请选择颜色';
+			} else if ( this.attrData[0] && this.attrData[1] ) {
+				this.chooseDescription = '已选' + this.attrValueData.join(',');
+			}
+		},
+		closeSkuAttr(){
+			this.isSelect = 0;
+			this.shoppingCartJson.goods_number = 1;
+		},
+		computedNum : function(type,number){
+			if( type == "add" ){
+				if( this.shoppingCartJson.goods_number < number ){
+					this.shoppingCartJson.goods_number += 1;
+				}else{
+					this.$store.commit("alert",{show:true,text:"数量超出库存啦~"})
+				}
+			}else{
+				if( this.shoppingCartJson.goods_number <= 1 ){
+					this.$store.commit("alert",{show:true,text:"不能再减啦~"})
+				}else{
+					this.shoppingCartJson.goods_number -= 1;
+				}
+			}
+		},
+		shareFun : function(type){
+			if( type == "open" ){
+				this.is_share = 1;  			
+			}else{
+				this.is_share = 0;
+			}
+		},
+		collectGoods(){
+			var that = this;
+			if ( that.collectId != '0' ) {
+				var requestJson = {ids:that.collectId,type:0};
+				that.$http.post('/Shop/Collect/delCollect', requestJson, {emulateJSON:true}).then(function(response){
+					var returnData = response['data'];
+					if ( returnData['status'] == '200000' ) {
+					  	that.isCollect = false;
+					  	that.collectId = '0';
+					} else {
+					  	that.$store.commit('alert', {show:true,text:returnData['message']});
+					}
+				});
+			} else {
+			  	var requestJson = {id:that.goodsID,type:0};
+				that.$http.post('/Shop/Collect/toCollect', requestJson, {emulateJSON:true}).then(function(response){
+					var returnData = response['data'];
+					if ( returnData['status'] == '200000' ) {
+					  	that.isCollect = true;
+					  	that.collectId = returnData['data']['collect_id'];
+					} else {
+					  	that.$store.commit('alert', {show:true,text:returnData['message']});
+					}
+				});
+			}
+		},
+		chooseInstall(){
+			this.shoppingCartJson.is_install = ( event.target.checked ) ? 1 : 0;
+		},
+		scrollMove(scrollTo,time){
+			var scrollFrom = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
+	        var count = 0;
+	        var every = 10;
+	        scrollTo = parseInt(scrollTo);
+	        time /= every;
+	        var interval = setInterval(function () {
+	           count++;
+	           document.documentElement.scrollTop = document.body.scrollTop = (scrollTo - scrollFrom) / time * count + scrollFrom;
+	           if (count >= time) {
+	             clearInterval(interval);
+	           }
+	        }, every);
+		},
+		positionTab : function(type){
+			this.is_tab = type;
+			if( type == "goods" ){
+				this.scrollMove(0,200);
+			}else if( type == "evaluate" ){
+				var eel = document.getElementById("Jevaluate");
+				this.scrollMove(eel.offsetTop-41,200);
+			}else{
+				var del = document.getElementById("Jdetail");
+				this.scrollMove(del.offsetTop-41,200);
+			}
+		},
+		consultation(){
+			if ( this.wechatAgent === true ) {
+				var queryJson = {
+					id : this.goodsID,
+					uid : this.userInfo['id'],
+					aid : this.agentInfo['user_id'],
+					aname : this.agentInfo['agent_name']
+				};
+				this.$router.push({name:'consultation',queryJson});
+			} else {
+				var goodsJson = {
+					id : this.goodsInfo['id'],
+					goods_name : this.goodsInfo['goods_name'],
+					goods_price : this.goodsInfo['goods_price'],
+					goods_images : this.goodsInfo['goods_images'],
+				};
+				goodsJson = JSON.stringify(goodsJson);
+				window.location.href = 'mitchell://chat?user_id='+ this.agentInfo['user_id'] +'&nickname='+ this.userInfo['nickname'] +'&headimgurl='+ this.userInfo['headimgurl'] +'&goodsInfo=' + goodsJson;
+			}
+		},
+		share(type){
+			var text = encodeURI(this.goodsInfo['goods_name']),
+				// image = encodeURIComponent(this.webSite + this.goodsInfo['goods_image']),
+				image = this.webSite + this.goodsInfo['goods_image'],
+				uri = encodeURIComponent(this.shareUrl);
+			window.location.href = "mitchell://share?type="+ type +"&image="+ image +"&text="+ text +"&url="+ uri;
+		}
+	}
+
+}
+</script>

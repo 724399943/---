@@ -1,0 +1,45 @@
+<template>
+  	<div class="content">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">系统通知</h1>
+		</header>
+		<div class="main">
+			<div class="news_detail">
+        <h1>{{list.title}}</h1>
+				<div class="imgbox">
+					<img :src="list.image">
+				</div>
+				<p v-html="list.content"></p>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+    return {
+      list : {}
+    }
+  },
+  created(){
+    this.$store.commit('loading',{show:true,text:'加载中...'});
+    this.getData();
+  },
+  mounted(){
+    this.$store.commit('loading',{show:false});
+  },
+  methods: {
+    getData(){
+      this.$http.post('/Shop/Message/messageDetail', {id:this.$route.query.id},{emulateJSON:true}).then(function(response){
+          if( response.data.status == "200000" ){
+            this.list = response.data.data.list;                              
+          }    
+      });
+    }
+  }
+
+}
+</script>
+

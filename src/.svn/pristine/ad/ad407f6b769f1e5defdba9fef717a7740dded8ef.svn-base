@@ -1,0 +1,159 @@
+<template>
+  	<div class="content" id="MyCoupons">
+  		<header class="head">
+  			<a href="javascript:;" class="back" @click="backToReferer('back')"></a>
+			  <h1 class="y-confirm-order-h1">我的优惠券</h1>
+		  </header>
+		<div class="main">
+			   <div class="couponWrap">
+            <ul class="coupul">
+                <li v-for="(item,index) in couponList">
+                    <div class="rcc-msg">
+                        <p class="name" v-if="item['agent_id'] != '0'">限购[{{item['agent_name']}}]店铺商品</p>
+                        <p class="name" v-else>{{item['coupon_name']}}</p>
+                        <p class="time">{{item.start_use_time | time("yyyy-MM-dd hh:mm:ss")}}-{{item.end_use_time | time("yyyy-MM-dd hh:mm:ss")}}</p>
+                    </div>
+                    <div class="rcc-imgWrap use">
+                        <div class="rcctext" v-if="dataJson.ids" @click="backToReferer('coupon',item['agent_id'],item['coupon_sn'],item['coupon_value'])">
+                            <h1>￥{{item.coupon_value}}</h1>
+                            <p>满{{item.min_cost}}可用</p>
+                            <span >去使用</span>
+                        </div>
+                        <div class="rcctext" v-else @click="backToReferer('back')">
+                            <h1>￥{{item.coupon_value}}</h1>
+                            <p>满{{item.min_cost}}可用</p>
+                              <span>去使用</span>
+                        </div>
+                    </div>
+                </li>               
+            </ul>   
+         </div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+      return {
+          couponList : [],
+          hasAjax:0,
+          page : 1,
+          dataJson : {
+              consignee_id : ( this.$route.query.consignee_id ) ? this.$route.query.consignee_id : '',
+              is_buy :  ( this.$route.query.is_buy ) ? this.$route.query.is_buy : '0',
+              coupon_type : ( this.$route.query.coupon_type ) ? this.$route.query.coupon_type : '0',
+              ids : ( this.$route.query.ids ) ? this.$route.query.ids : '',
+              message : ( this.$route.query.message ) ? this.$route.query.message : '',
+              install : ( this.$route.query.install ) ? this.$route.query.install : '',
+              coupon : ( this.$route.query.coupon ) ? this.$route.query.coupon : '',
+          },
+      }
+  },
+  created(){
+    this.$store.commit('loading',{show:true,text:'加载中...'});
+    this.getData();
+  },
+  mounted(){
+    this.$store.commit('loading',{show:false});
+    this.loadMore();
+  },
+  methods: {
+    getData(){
+      if ( this.dataJson.ids ) {
+          var requestJson = {agent_id: this.$route.query.agent_id};
+          this.$http.post('/Shop/Coupon/userCanUseCoupon', requestJson, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if( returnData['status'] == "200000" ){
+                  var couponList = returnData['data']['list'],
+                      realTotal = Number(this.$route.query.total) + Number(this.$route.query.installTotal);
+                  for ( var i in couponList ) {
+                      var couponData = couponList[i],
+                          min_cost = Number(couponData['min_cost']);
+                      if ( min_cost > realTotal ) {
+                          couponList.splice(i, 1);
+                      }
+                  }
+                  this.couponList = couponList;
+              }
+          });
+      } else {
+          if( this.hasAjax == 0 ){
+            this.hasAjax = 1;
+            this.$http.post('/Shop/Coupon/userCoupon', {page:this.page},{emulateJSON:true}).then(function(response){ 
+              this.hasAjax = 0;
+              if( this.page == 0 ){
+                this.couponList = response.data.data.list;
+                this.page++;              
+              }else{
+                if( response.data.data.list.length == 0 ){                
+                  this.hasAjax = 1;
+                }else{
+                  this.page++;
+                  this.couponList = this.couponList.concat(response.data.data.list);
+                }
+              }
+              this.$store.commit('loading',{show:false});                               
+            });
+          }
+      }
+    },
+    loadMore(){         
+        var that = this;
+        this.$store.commit('scrollFun',{dom:"MyCoupons",auto:true,bottomCall:function(){           
+          that.getData();
+        }})
+    },
+    backToReferer( type, agent_id, coupon_sn, coupon_value ){
+        if ( type == 'back' ) {
+            ( this.dataJson.ids ) ? 
+                ( this.dataJson.is_buy == '1' ?
+                    this.$router.push({name: 'orderInfo', query: this.dataJson}) :
+                    ( this.dataJson.coupon_type == '0' ? 
+                        this.$router.push({name: 'inventory', query: this.dataJson}) :
+                        this.$router.push({name: 'orderInfo', query: this.dataJson})
+                    )
+                ) :
+                window.history.go(-1);
+        } else {
+            if ( !this.dataJson.coupon ) {
+                var couponJson = [];
+                couponJson[0] = {};
+                couponJson[0]['agent_id'] = agent_id;
+                couponJson[0]['coupon_sn'] = coupon_sn;
+                couponJson[0]['coupon_value'] = coupon_value;
+                this.dataJson.coupon = JSON.stringify(couponJson);
+            } else {
+                // var couponJson = eval('(' + this.dataJson.coupon + ')');
+                var couponJson = JSON.parse(this.dataJson.coupon);
+                var agentExists = false,
+                    number = couponJson.length;
+                for (var i = 0; i < number; i++) {
+                    var couponData = couponJson[i];
+                    if ( couponData['agent_id'] == agent_id ) {
+                        couponJson[i]['coupon_sn'] = coupon_sn;
+                        couponJson[i]['coupon_value'] = coupon_value;
+                        agentExists = true;
+                    }
+                }
+                if ( agentExists == false ) {
+                    couponJson[number] = {};
+                    couponJson[number]['agent_id'] = agent_id;
+                    couponJson[number]['coupon_sn'] = coupon_sn;
+                    couponJson[number]['coupon_value'] = coupon_value;
+                }
+                this.dataJson.coupon = JSON.stringify(couponJson);
+            }
+            ( this.dataJson.is_buy == '1' )?
+                this.$router.push({name: 'orderInfo', query: this.dataJson}) :
+                ( this.dataJson.coupon_type == '0' ? 
+                    this.$router.push({name: 'inventory', query: this.dataJson}) :
+                    this.$router.push({name: 'orderInfo', query: this.dataJson})
+                );
+        }
+    }
+  }
+
+}
+</script>
+

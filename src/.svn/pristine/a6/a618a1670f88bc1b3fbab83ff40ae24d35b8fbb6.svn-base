@@ -1,0 +1,164 @@
+<template>
+  	<div class="content" id="ReturnsAfter">
+  		<header class="head">
+			<a class="back" @click="jumpToUrl()"></a>
+			<h1 class="y-confirm-order-h1">退货/售后</h1>			
+		</header>
+		<div class="main">
+			<div class="retafter">
+				<div class="rfnav">
+					<span :class="{on:is_tab == 'goods'}" @click="ontabFun('goods')">选择商品</span>
+					<span :class="{on:is_tab == 'see'}" @click="ontabFun('see')">售后查看</span>
+				</div>
+				<!-- 选择商品 -->
+				<div class="rforder" v-for="(item,index) in list" v-if="is_tab == 'goods'">
+					<div v-if="item['is_return'] > 0">
+						<div class="rfonum">
+							<p>订单编号：{{item.order_sn}}</p>
+							<span>{{item.add_time | time}}</span>
+						</div>
+						<div class="yysregoods" v-for="(data,ind) in item.goodsList" v-if="parseInt(data['return_number']) != parseInt(data['goods_number'])">
+	                		<div class="in-goods">
+			                    <div class="imgbox">
+			                        <img :src="data.goods_image">
+			                    </div>
+			                    <div class="ingmsg">
+			                        <p class="name db-overflow">{{data.goods_name}}</p>
+			                        <div class="invpn">
+			                            <span class="price">￥{{data.unit_price}}</span>
+			                            <span class="num">x{{data.goods_number}}</span>
+			                        </div>
+			                        <div class="invattr" v-if="data.is_install == 1">
+			                            <span>[服务]上门安装</span>
+			                            <span class="pn">￥{{data.install_price}} x1</span>
+			                        </div>
+			                        <div class="invattr" v-else>
+			                            <span>{{data['attr_list']}}</span>
+			                        </div>
+			                    </div>   
+			                </div>
+		                    <div class="inyysqbtn">
+		                    	<router-link :to="{name: 'applyForReturns', query: {goods_id: data['goods_id'], 'order_sn': item['order_sn'],url:url}}">
+		                    		申请退货
+		                    	</router-link>
+		                    </div> 
+	                	</div> 
+					</div>
+				</div>
+				<!-- 售后查看 -->
+				<div class="affterSales" v-else>
+					<div class="affsalist" v-for="(item,index) in list">
+						<div class="y-trace-express">
+							<p>售后单号：{{item.return_sn}}</p>		
+						</div>
+						<div class="in-goods">
+		                    <div class="imgbox">
+		                        <img :src="item.goods_image">
+		                    </div>
+		                    <div class="ingmsg">
+		                        <p class="name db-overflow">{{item.goods_name}}</p>
+		                        <div class="invattr">
+		                            <span>{{item.attr_list}}</span>
+		                        </div>
+		                        <div class="affterMoney">
+		                        	<p>结算金额：<em>￥{{item.price}}</em></p>
+		                        	<span>x{{item.goods_number}}</span>
+		                        </div>
+		                    </div>   
+		                </div>
+						<div class="affterState">
+							<p class="state">状态：
+								<span v-if="item.status == 1">审核通过</span>
+								<span v-else-if="item.status == 2">审核不通过</span>
+								<span v-else-if="item.status == 3">同意退款</span>
+								<span v-else-if="item.status == 4">退款成功</span>
+								<span v-else>退货审核中</span>
+							</p>
+							<p v-if="item.status == 2">原因：{{item.remark}}</p>
+							<p class="time">申请时间：{{item.add_time | time}}</p>
+						</div>
+					</div>						
+				</div>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			url :  (this.$route.query.url) ? this.$route.query.url : '',
+			list : [],
+			nomore : false,
+            loadData : true,
+			dataJson : {
+				keyword : this.$route.query.keyword,
+				page : 0
+			},
+			is_tab : ( this.$route.query.is_tab ) ? this.$route.query.is_tab : 'goods',
+			requestUrl : '',
+		}
+	},
+	created(){
+		this.$store.commit('loading',{show:true,text:'加载中...'});
+		this.getData();
+	},
+	mounted(){
+		this.loadMore();
+		// this.$store.commit('loading',{show:false});
+	},
+	methods: {
+		getData(){
+			if( this.is_tab == 'goods' ){
+				this.requestUrl = '/Shop/OrderGoodsReturn/toAfterSaleOrder';
+			}else{
+				this.requestUrl = '/Shop/OrderGoodsReturn/afterSaleOrder';
+			}
+			var that = this;
+		    if ( that.loadData == true ) {
+		    	that.dataJson.page++;
+		        that.loadData = false;
+		        that.$http.post(that.requestUrl, that.dataJson, {emulateJSON:true}).then(function(response){
+		            var returnData = response['data'];
+		            if ( returnData['data']['list'].length ) {
+		                that.list = ( that.list.length ) ? that.list.concat(returnData['data']['list']) : returnData['data']['list'];
+		                console.log(this.list);
+		            } else {
+		                if ( that.list.length ) {
+		                    that.nomore = true;
+		                }
+		            }
+		            that.$nextTick(function () {
+		                that.loadData = true;
+		                that.$store.commit('loading',{show:false});
+		            })
+		        });
+		    }
+		},
+		loadMore(){         
+		    var that = this;
+		    that.$store.commit('scrollFun',{dom:"ReturnsAfter",auto:true,bottomCall:function(){
+		    	if ( that.nomore == false ) {
+		      		that.getData();
+		        }
+		    }})
+		},
+		ontabFun : function(type){
+			this.is_tab = type;
+			this.list = [];
+			this.loadData = true;
+			this.dataJson.page = 0;
+			this.getData();
+		},
+		jumpToUrl(){
+			if(this.url == 'personal')
+				this.$router.push({path: '/personalCenter'});
+			else
+				window.history.go(-1);
+		}
+  	}
+
+}
+</script>
+

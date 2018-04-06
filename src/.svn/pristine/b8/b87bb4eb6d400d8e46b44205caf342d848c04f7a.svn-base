@@ -1,0 +1,49 @@
+@charset "UTF-8";
+
+body,div,ul,ol,li,dl,dt,dd,p,h1,h2,h3,h4,h5,h6,form,table,tr,td,th,button,input,select,textarea,p,i{margin:0;padding:0;-webkit-tap-highlight-color:rgba(255,255,255,0);}
+img{border:none;vertical-align:top;}
+ol,ul{list-style:none;}
+button,input,select,textarea{font-size:100%;outline:none;resize:none; font-family: "Microsoft Yahei";}
+em,i,strong,b{font-style:normal;font-weight:normal;}
+article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block;}
+table{border-collapse:collapse;border-spacing:0;}
+table td{ border:1px solid #ddd; text-align: center;}
+h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal;}
+
+/*User-Defined*/
+body {font: 14px/1.5 'Microsoft Yahei',Arial;background: #fff;-webkit-text-size-adjust: none;color:#192b39;}
+a{text-decoration:none;outline:none;}
+a:visited{ color: none;}
+a{color:#666;text-decoration:none;outline:none; -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;-webkit-user-select: none;}
+select{appearance:none; -moz-appearance:none; -webkit-appearance:none; }
+.clearfix:after {content: " "; display: block; clear: both; height: 0; }
+.clearfix {zoom: 1; }
+a,a:hover,a:active,a:visited,a:link,a:focus{
+    -webkit-tap-highlight-color:rgba(255,255,255,0);
+    outline:none;
+    text-decoration: none;
+}
+.db-overflow{overflow: hidden; text-overflow: ellipsis;-webkit-line-clamp: 2;-webkit-box-orient: vertical; display: -webkit-box;}
+.vertical-mi{display: box; display: -webkit-box; -webkit-box-pack:center; 
+-webkit-box-align:center;}
+
+input[type="button"], input[type="submit"], input[type="reset"],input[type="text"],input[type="number"] {-webkit-appearance: none;}
+input{border-radius: 0;}
+textarea {  -webkit-appearance: none;} 
+
+footer {position:absolute; z-index:2; bottom:0; left:0; width:100%; height:50px;    overflow:visible;}
+header {position:absolute; z-index:2; top:0; left:0; width:100%;height: 70px;background-color: #f5f5f5;}
+
+body{width: 100%;background:#f5f7f9;}
+.loading{ position: fixed; width: 50px; height: 50px; top: 50%;  left: 50%; z-index: 20;margin-top: -25px;margin-left: -25px;  }
+.loading img{ width: 50px; border-radius: 50%; }
+/*自动消失*/
+.automsg-main-box {font-size: 16px; position: fixed; top: 49%; left: 50%; width: 60%; margin-left: -30%; padding: 20px 0; margin-top: -50px; background: rgba(0,0,0,0.6); margin-top: -50px;color: #fff; overflow: hidden; border-radius: 10px; text-align: center; display: block;z-index: 99;}
+.automsg-main-box .tit{height:55px;line-height: 55px;display: block;}
+.automsg-main-box .detail-txt{height: 20px;line-height: 20px;display: block;}
+
+/*滚动条样式*/
+.diyScroll::-webkit-scrollbar{width:0px;background:transparent;}
+/*.diyScroll::-webkit-scrollbar-thumb{border-radius:10px;background:transparent;-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,.3);}
+.diyScroll::-webkit-scrollbar-track{-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);border-radius:10px;background:transparent;}*/

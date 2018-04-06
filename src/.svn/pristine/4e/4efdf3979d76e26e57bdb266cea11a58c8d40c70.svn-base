@@ -1,0 +1,116 @@
+<template>
+  	<div class="content" id="DecoInform">
+    		<header class="head">
+      			<div class="search_cate">
+      				<a href="javascript:window.history.go(-1);" class="back"></a>
+      				<h1 class="y-confirm-order-h1">装修资讯</h1>
+      			</div>
+  		  </header>
+        <div class="main">
+            <div class="decInform">
+                <div class="decNav">
+                    <div class="dntop" id="Jdntop">
+                        <span :class="{on:group_id == 0}" id="all" @click="tabFun(0)">全部<em></em></span> 
+                        <span v-for="(gr,index) in groupList" :class="{on : gr.id == group_id}" @click="tabFun(gr.id)">{{gr.group_name}}<em></em></span>                         
+                    </div>
+                </div>
+                <div class="decCont">
+                    <ul class="inforUl">
+                      <template v-for="(ar,index) in articleList">
+                        <router-link :to="{path:'/informationDetail',query:{id:ar.id}}">
+                          <li>
+                              <div class="pp-msg">
+                                  <p class="db-overflow">{{ar.title}}</p>
+                                  <div class="sju">
+                                      <span class="look">{{ar.view_number}}</span>
+                                      <span class="live">{{ar.collect_number}}</span>
+                                  </div>
+                              </div>
+                              <div class="imgbox">
+                                  <img :src="ar.image">
+                              </div>
+                          </li>                        
+                        </router-link>
+                      </template>
+                    </ul>
+                </div>
+            </div>
+        </div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+    return {
+      groupList : [],
+      articleList : [],
+      hasAjax:0,
+      page : 1,
+      group_id : ''
+    }
+  },
+  created(){
+      this.$store.commit('loading',{show:true,text:'加载中...'});
+      this.getArticleGroup();
+  },
+  mounted(){
+      this.$store.commit('loading',{show:false});
+      this.loadMore();
+  },
+  methods: {
+    getArticleGroup : function(){
+        this.$http.post('/Shop/Article/articleGroup', {},{emulateJSON:true}).then(function(response){
+            if( response.data.status == "200000" ){
+                this.groupList = response.data.data.list;   
+                this.setNavWidth();
+                this.getArticleList();                 
+            }   
+        });
+    },
+    setNavWidth : function(){
+        var Jdntop = document.getElementById('Jdntop');   
+        var elw = document.getElementById('all').clientWidth;
+        var _size = this.groupList.length;
+        var _width = elw * (_size+2);
+        Jdntop.style.width = _width +'px';
+    },
+    getArticleList : function(){
+        if( this.hasAjax == 0 ){
+          this.hasAjax = 1;
+          this.$http.post('/Shop/Article/articleList', {group_id:this.group_id,page:this.page},{emulateJSON:true}).then(function(response){ 
+            this.hasAjax = 0;
+            if( this.page == 0 ){
+              this.articleList = response.data.data.list;
+              this.page++;              
+            }else{
+              if( response.data.data.list.length == 0 ){                
+                this.hasAjax = 1;
+              }else{
+                this.page++;
+                this.articleList = this.articleList.concat(response.data.data.list);
+              }
+            }
+            this.$store.commit('loading',{show:false});                               
+            });
+
+        }        
+    },
+    tabFun : function(id){
+      this.group_id = id;
+      this.hasAjax = 0;
+      this.page = 1;
+      this.articleList = [];
+      this.getArticleList();
+    },
+    loadMore(){         
+        var that = this;
+        this.$store.commit('scrollFun',{dom:'DecoInform',auto:true,bottomCall:function(){           
+          that.getArticleList();
+        }})
+    }
+  }
+
+}
+</script>
+

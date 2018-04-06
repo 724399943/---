@@ -1,0 +1,174 @@
+<template>
+  	<div class="content" id="postDetails">
+  		<header class="head">
+        <a href="javascript:window.history.go(-1);" class="back"></a>
+  			<h1 class="y-confirm-order-h1">{{postDetail['title']}}</h1>
+  		</header>
+      <div class="main">
+  			<div class="postDetail">
+            <div class="pd-usertop">
+                <div class="imgbox">
+                  <img :src="userInfo['headimgurl']">
+                </div>
+                <div class="pd-name">{{userInfo['nickname']}}<span>12小时前</span></div>
+                <div class="biao" v-if="postDetail.is_essence == '1'">精华</div>
+                <div class="biao" v-if="postDetail.is_hot == '1'">HOT</div>
+                <div class="line"></div>
+            </div>   
+            <div class="pd-word" v-html="postDetail['content']"></div>
+            <div class="pd-eva">
+                <p class="title">{{postDetail['comment_number']}}条评论</p>
+                <ul class="pd_evaul">
+                    <li v-for="(data,index) in postComment">
+                        <div class="evaTop">
+                        <div class="imgbox">
+                              <img :src="data['headimgurl']">
+                          </div>
+                          <p class="name">{{data['nickname']}}</p>
+                          <span class="time">{{data['add_time'] | time}}</span>
+                        </div>
+                        <p class="evacont">{{data['content']}}</p>
+                    </li>
+                </ul>
+                <div class="pd-evatotal">
+                    <div class="evlf">
+                        浏览 {{postDetail['view_number']}}·评论 {{postDetail['comment_number']}}
+                    </div>
+                    <div class="evrg">
+                        <div class="rg" @click="processText(1)">
+                            <em class="comment"></em>
+                            评论
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+  		</div>
+      <!-- 评论 -->
+      <div class="mask" v-bind:style="{display: maskStyle}" @click="processText(0)"></div>
+      <div class="evainput" v-bind:style="{display: evainputStyle}">
+          <div class="llint">
+              <input type="text" v-model="commentJson.content" @focus="onfocusFun">
+              <a href="javascript:;" class="evaset" @click="toComment">发送</a>
+          </div>
+      </div>
+  	</div>
+</template>
+<script>
+
+export default {
+
+	data () {
+    return {
+      dataJson : {
+        id: this.$route.query.id,
+        page : 0,
+      },
+      postDetail : {},
+      userInfo : {},
+      postComment : [],
+      loadData : true,
+      maskStyle : 'none',
+      evainputStyle : 'none',
+      commentJson : {
+        id:this.$route.query.id,
+        content:''
+      },
+      bfscrolltop : '',
+      interval : null
+    }
+	},
+	created(){
+		  this.getPostDetail();
+      this.getPostComment();
+	},
+	components : {
+	  	
+	},
+	computed: {
+	    
+	},
+  mounted(){
+      this.loadMore();
+  },
+	methods: {
+	    getPostDetail(){
+          var that = this;
+          that.$http.post('/Shop/Post/postDetail', that.dataJson, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if ( returnData['status'] == '200000' ) {
+                  that.postDetail = returnData['data']['list'];
+                  that.userInfo = returnData['data']['userInfo'];
+              }
+          });
+      },
+      getPostComment(){
+          var that = this;
+          if ( that.loadData == true ) {
+              that.dataJson.page++;
+              that.loadData = false;
+              that.$http.post('/Shop/Post/postComment', that.dataJson, {emulateJSON:true}).then(function(response){
+                  var returnData = response['data'];
+                  if ( returnData['data']['list'].length ) {
+                      that.postComment = ( that.postComment.length ) ? that.postComment.concat(returnData['data']['list']) : returnData['data']['list'];
+                  }
+                  that.$nextTick(function () {
+                      that.loadData = true;
+                  })
+              });
+          }
+      },
+      processText(type){
+          if ( type == 1 ) {
+              this.maskStyle = 'block';
+              this.evainputStyle = 'block';
+          } else {  
+              this.maskStyle = 'none';
+              this.evainputStyle = 'none';
+          }
+      },
+      toComment(){
+          var that = this;
+          if ( !that.commentJson.content ) {
+              that.$store.commit('alert', {show:true,text:'评论不能为空'});
+              return;
+          }
+          that.$http.post('/Shop/Post/toComment', that.commentJson, {emulateJSON:true}).then(function(response){
+              var returnData = response['data'];
+              if ( returnData['status'] == '200000' ) {
+                  that.$store.commit('alert', {show:true,text:'评论成功'});
+                  that.processText(0);
+                  var commentData = {};
+                  commentData['add_time'] = Date.parse(new Date()) / 1000;
+                  commentData['content'] = that.commentJson.content;
+                  commentData['nickname'] = returnData['data']['user']['nickname'];
+                  commentData['headimgurl'] = returnData['data']['user']['headimgurl'];
+                  that.postComment.unshift(commentData);
+                  that.commentJson.content = '';
+                  that.postDetail.comment_number++;
+              } else {
+                  that.$store.commit('alert', {show:true,text:returnData['message']});
+              }
+          });
+      },
+      loadMore(){         
+          var that = this;
+          that.$store.commit('scrollFun',{dom:'postDetails', auto:true, bottomCall:function(){           
+              if ( that.nomore == false ) {
+                  that.getPostComment();
+              }
+          }})
+      },      
+      onfocusFun : function(){
+        var t = setTimeout(function(){
+            document.body.scrollTop = document.body.scrollHeight;
+        },700);
+      },
+      onblurFun : function(){
+          clearInterval(this.interval);
+          document.body.scrollTop = this.bfscrolltop;
+      }
+	}
+
+}
+</script>

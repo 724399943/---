@@ -1,0 +1,203 @@
+<template>
+  	<div class="content" id="OrderList">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">全部</h1>			
+		</header>
+		<div class="main">
+			<div class="orderList_wrap">
+				<div class="order-state-tabs">
+					<a href="javascript:;" class="state-btn JstateBtn" :class="{on:status == -1}" @click="ontabFun('-1')">全部</a>
+					<a href="javascript:;" class="state-btn JstateBtn" :class="{on:status == 0}" @click="ontabFun('0')">待付款</a>
+					<a href="javascript:;" class="state-btn JstateBtn" :class="{on:status == 1}" @click="ontabFun('1')">待发货</a>
+					<a href="javascript:;" class="state-btn JstateBtn" :class="{on:status == 2}" @click="ontabFun('2')">待收货</a>
+					<a href="javascript:;" class="state-btn JstateBtn" :class="{on:status == 3}" @click="ontabFun('3')">待评价</a>
+				</div>
+				<div class="my_order_wrap">
+					<ul class="yy-myorder-list">
+						<li v-for="(item,index) in list">
+							<div class="order-tophead">
+								<router-link :to="{path:'/orderDetail',query:{order_sn:item.order_sn}}">
+									<span class="ott-t">订单编号:</span>
+									<span class="ott-sn">{{item.order_sn}}</span>
+									<em class="ot-tips" v-if="item.status == 0">待支付</em>
+									<em class="ot-tips" v-else-if="item.status == 1">待发货</em>
+									<em class="ot-tips" v-else-if="item.status == 2">待收货</em>
+									<em class="ot-tips" v-else-if="item.status == 3">待评价</em>
+									<em class="ot-tips" v-else-if="item.status == 4">已完成</em>
+									<em class="ot-tips" v-else-if="item.status == 5">已取消</em>
+									<em class="ot-tips" v-else-if="item.status == 6">退换货</em>
+									<em class="ot-tips" v-else-if="item.status == 7">待接单</em>
+									<em class="ot-tips" v-else-if="item.status == 8">待生产</em>
+								</router-link>						
+							</div>
+							<div class="y-order-pro">
+					        	<router-link :to="{path:'/orderDetail',query:{order_sn:item.order_sn}}" class="y-kein" v-if="item.goodsList.length == 1">
+					        		<div class="y-imgbox">
+							        	<div class="y-img">
+								        	<div class="ab">
+								        		<img :src="item.goodsList[0].goods_image">
+								        	</div>
+							        	</div>
+					        		</div>       		
+						        	<div class="y-jnjcn">
+							        	<p class="y-njcn db-overflow">{{item.goodsList[0].goods_name}}</p>
+						        	</div>
+						        </router-link>	
+								<!-- 多商品 -->
+			                    <div class="yy-goodslist" v-else-if="item.goodsList.length > 1">
+			                        <div class="ygimgbox" v-for="(pic,index2) in item.goodsList">
+			                        	<router-link :to="{name:'orderDetail',query:{order_sn:item.order_sn}}">
+			                                <img :src="pic.goods_image">
+			                        	</router-link>
+			                        </div>
+			                    </div>
+				        	</div>
+				        	<div class="tt-count">
+				        		<p>共 {{item.goods_number}} 件商品</p> 
+				        		<span>实付款：<em>{{item.total}}元</em></span>
+				        	</div>
+				        	<div class="y_btnbox">
+				        		<div class="btbox clearfix" v-if="item.status == 0">
+					        		<a href="javascript:;" class="c2" @click="delOrder(index,item.order_sn)">取消</a>
+					        		<router-link :to="{path:'/payment',query:{order_sn:item.order_sn,total:item.total}}" class="c2">支付</router-link>
+					        	</div>
+					        	<div class="btbox clearfix" v-else-if="item.status == 1">
+					        		<router-link :to="{path:'/orderSchedule',query:{order_sn:item.order_sn}}" class="c2">查看进度</router-link>
+					        		<a href="javascript:;" class="c2" @click="remindOrder(item.order_sn)">提醒发货</a>
+					        		<router-link to="/returnsAfterSales" class="c2">申请退货</router-link>
+					        	</div>
+					        	<div class="btbox clearfix" v-else-if="item.status == 2">
+					        		<router-link to="/returnsAfterSales" class="c2">申请退货</router-link>
+					        		<a href="javascript:;" class="c2" @click="postponeReceived(index,item.order_sn)" v-if="item.is_postpone == '0'">延期收货</a>
+					        		<a href="javascript:;" class="c2" v-else>已延期</a>
+					        		<a href="javascript:;" class="c2" @click="receivedOrder(index,item.order_sn)">确认收货</a>
+					        	</div>
+					        	<div class="btbox clearfix" v-else-if="item.status == 3">
+					        		<router-link :to="{name: 'selEvaluateGoods', query: {'order_sn': item['order_sn']}}" class="c2">
+					        			评价
+					        		</router-link>
+					        	</div>
+					        	<div class="btbox clearfix" v-else>
+					        		<a href="javascript:;" class="c2" @click="delOrder(index,item.order_sn)">删除</a>					        		
+					        	</div>
+					        </div>
+						</li>
+					</ul>
+				</div>
+			</div>
+			<!-- 弹窗 -->
+			<div class="mmomask" style="display:none;">
+                <div class="mmadelBox">
+                    <p>如确定已收货，请确认收货，<br>如未收到货，请谨慎确认。</p>
+                    <div class="btn">
+                        <span>取消</span>
+                        <span class="line">确认</span>
+                    </div>
+                </div>
+           </div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			list : [],
+			hasAjax:0,
+			page : 1,
+			status : this.$route.query.status,
+		}
+	},
+	created(){
+		this.$store.commit('loading',{show:true,text:'加载中...'});
+		this.getData();
+	},  
+	mounted(){
+		this.$store.commit('loading',{show:false});
+		this.loadMore();
+	},
+	methods: {
+		getData(){
+			if( this.hasAjax == 0 ){
+				this.hasAjax = 1;
+				this.$http.post('/Shop/Order/orderList', {status:this.status,page:this.page},{emulateJSON:true}).then(function(response){ 
+					this.hasAjax = 0;
+					if( this.page == 0 ){
+						this.list = response.data.data.list;
+						this.page++;              
+					}else{
+						if( response.data.data.list.length == 0 ){                
+							this.hasAjax = 1;
+						}else{
+							this.page++;
+							this.list = this.list.concat(response.data.data.list);
+						}
+					}
+					this.$store.commit('loading',{show:false});                               
+				});
+			}
+		},
+		loadMore(){         
+			var that = this;
+			this.$store.commit('scrollFun',{dom:"OrderList",auto:true,bottomCall:function(){           
+				that.getData();
+			}})
+		},
+		ontabFun : function(status){
+			this.status = status;
+			this.list = [];
+			this.hasAjax = 0;
+			this.page = 1;
+			this.getData();
+		},
+		delOrder : function(index,order_sn){
+			var that = this;
+			this.$store.commit('confirm',{show:true,text:"确认删除订单？",call:function(){
+				that.$http.post('/Shop/Order/cancelTheOrder', {order_sn:order_sn},{emulateJSON:true}).then(function(response){
+			        if( response.data.status == "200000" ){
+			        	that.list.splice(index,1);
+			            that.$store.commit('alert',{show:true,text:response.data.message});                      
+			        }    
+			    });
+			}})
+		},
+		remindOrder : function(order_sn){
+			this.$http.post('/Shop/Order/remindTheOrder', {order_sn:order_sn},{emulateJSON:true}).then(function(response){
+			    if( response.data.status == "200000" ){
+			        this.$store.commit('alert',{show:true,text:response.data.message});                      
+			    }else{
+			    	this.$store.commit('alert',{show:true,text:response.data.message});                      
+			    }    
+			});
+		},
+		receivedOrder : function(index,order_sn){
+			var that = this;
+			this.$store.commit('confirm',{show:true,text:"如确定已收货，请确认收货；如未收到货，请谨慎确认。",call:function(){
+				that.$http.post('/Shop/Order/receivedTheOrder', {order_sn:order_sn},{emulateJSON:true}).then(function(response){
+			        if( response.data.status == "200000" ){
+			        	that.list.splice(index,1);
+			            that.$store.commit('alert',{show:true,text:response.data.message});                      
+			        }    
+			    });
+			}})
+		},
+		postponeReceived(index,order_sn){
+			var that = this;
+			this.$store.commit('confirm',{show:true,text:"每笔订单只能延迟一次，确认延长收货时间？",call:function(){
+				that.$http.post('/Shop/Order/postponeReceived', {order_sn:order_sn},{emulateJSON:true}).then(function(response){
+			        if( response.data.status == "200000" ){
+			        	that.list[index]['is_postpone'] = '1';
+			        	that.$store.commit('alert',{show:true,text:'已延期收货7天'});
+			        } else {
+			        	that.$store.commit('alert',{show:true,text:response.data.message});
+			        }
+			    });
+			}})
+		}
+	}
+
+}
+</script>
+

@@ -1,0 +1,161 @@
+<template>
+  	<div class="content">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">评价</h1>
+		</header>
+		<div class="main">
+			<div class="appforRturn">
+				<div class="evagoods">
+                    <div class="imgbox">
+                    	<router-link :to="{name: 'goodsDetail', query: {'id': dataJson['goods_id']}}">
+                        	<img :src="goods_image">
+                    	</router-link>
+                    </div>
+                    <div class="evastar">
+                    	<p>评分</p>
+                    	<div class="estar">
+							<div class="estar_cont">
+								<div class="star" :class="{on: dataJson.star >= 1}" @click="chooseStar(1)"></div> 
+								<div class="star" :class="{on: dataJson.star >= 2}" @click="chooseStar(2)"></div> 
+								<div class="star" :class="{on: dataJson.star >= 3}" @click="chooseStar(3)"></div> 
+								<div class="star" :class="{on: dataJson.star >= 4}" @click="chooseStar(4)"></div> 
+								<div class="star" :class="{on: dataJson.star >= 5}" @click="chooseStar(5)"></div>
+							</div>
+						</div>
+                    </div>
+                </div>
+                <div class="arcont">
+                	<div class="yy-infoorder">						
+						<div class="miaoshu">
+							<div class="yyafmiao">
+								<textarea placeholder="请您在此输入您的评价~" v-model="dataJson.contain"></textarea>
+								<div class="sqimgfile">
+									<em></em>
+								</div>
+							</div>
+						</div>
+						<div class="sqmsImgMain">
+							<div class="imgbox" v-for="(data,index) in photoData">
+								<img :src="data['url']">
+								<em @click="removePhoto(data['image'],index)"></em>
+							</div>
+							<div class="imgbox">
+								<img src="../assets/images/add_ico.png">
+								<input type="file" accept="image/*;capture=camera" @change="imageuploaded" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; opacity: 0;" v-if="(iphone == false && android == false) || iphone == true">
+								<input type="button" @click="choose" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; opacity: 0;" v-else-if="android == true">
+							</div>
+						</div>
+					</div>
+                </div>
+                <a href="javascript:;" class="afrbtn" @click="addGoodsComment">提交</a>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			goods_image : this.$route.query.goods_image,
+			dataJson : {
+				goods_id : this.$route.query.goods_id,
+				order_sn : this.$route.query.order_sn,
+				star : 5,
+			},
+			photoData : [],
+			iphone : false,
+            android : false,
+		}
+	},
+	created(){
+		var ua = navigator.userAgent.toLowerCase();
+        if (ua.indexOf('micromessenger') == -1) {
+        	if (ua.indexOf('iphone') != -1 || ua.indexOf('ipad') != -1 || ua.indexOf('ipod') != -1) {
+                this.iphone = true;
+                this.android = false;
+            } else {
+                this.iphone = false;
+                this.android = true;
+            }
+        }
+        window.onChooseResult = this.onChooseResult;
+	},
+	computed: {
+
+	},
+	methods: {
+		chooseStar(star){
+			this.dataJson.star = star;
+		},
+		addGoodsComment(){
+			if ( !this.dataJson.contain ) {
+				this.$store.commit('alert', {show:true,text:'请您在此输入您的评价'});
+				return;
+			}
+			var photo = [];
+			for (var i = 0; i < this.photoData.length; i++) {
+				var imageData = {},
+					photoData = this.photoData[i];
+				imageData['comment_image'] = photoData['image'];
+				photo.push(imageData);
+			}
+			this.dataJson.photo = JSON.stringify(photo);
+			this.$http.post('/Shop/GoodsComment/addGoodsComment', this.dataJson, {emulateJSON:true}).then(function(response){
+				var returnData = response['data'];
+				if ( returnData['status'] == '200000' ) {
+					this.$router.push({name: 'evaluateSuccess'});
+				} else {
+					this.$store.commit('alert', {show:true,text:returnData['message']});
+				}
+            })
+		},
+		removePhoto(url, index){
+			this.$http.post('/Shop/Public/removePhoto', {image: url},{emulateJSON:true}).then(function(response){
+				if ( response.data.status == '200000' ) {
+					this.photoData.splice(index, 1);
+				}
+            })
+		},
+		imageuploaded(e) {
+			if ( this.photoData.length == 3 ) {
+				this.$store.commit('alert', {show:true,text:'最多上传3张图片'});
+				return;
+			}
+	        var that = this;
+	        var files = e.target.files || e.dataTransfer.files
+	        var reader = null;
+	        reader = new window.FileReader();
+	        reader.readAsDataURL(files[0]);
+	        reader.onload = function(e){
+	          	that.$http.post('/Shop/Public/base64Upload', {image:e.target.result,dir:'Comment'},{emulateJSON:true}).then(function(response){
+	          		var returnData = response['data'];
+					if( returnData['status'] == "200000" ){
+						var imageData = {};
+						imageData['image'] = returnData['data']['image'];
+						imageData['url'] = e.target.result;
+						this.photoData.push(imageData);
+					}
+	            })
+	        }
+	    },
+	    choose(){
+	    	//点击选择图片，js调用Android打开相册
+            JSInterface.choose();
+	    },
+	    onChooseResult(images){
+	    	var imagesData = new Array();
+	    	imagesData = images.split(',');
+	    	for ( var i in imagesData) {
+		    	var imageData = {};
+				imageData['image'] = imagesData[i];
+				imageData['url'] = imagesData[i];
+				this.photoData.push(imageData);
+	    	}
+	    }
+	}
+
+}
+</script>
+

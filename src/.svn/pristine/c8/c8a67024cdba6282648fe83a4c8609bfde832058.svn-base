@@ -1,0 +1,139 @@
+<template>
+  	<div class="content">
+		<div class="login_wrap all">
+			<router-link to="/" class="close"></router-link>
+			<div class="logoBox">
+				<img class="logo" src="../assets/images/login_logo_icn@2x.png">
+				<img class="name" src="../assets/images/login_wjmm_icn.png">
+			</div>
+			<form>
+				<div class="login_box">
+					<div class="login_input">
+						<input type="text" placeholder="请输入手机号" @focus="focusPosition" @blur="blurPosition" v-model="dataJson.account">
+					</div>
+					<div class="login_input">
+						<input type="password" id="Kpassword" placeholder="请输入密码" @focus="focusPosition" @blur="blurPosition" v-model="dataJson.password">
+						<em v-bind:class="{on: eyeClass}" @click="showEye"></em>
+					</div>
+					<div class="linput">
+						<router-link to="/register" class="lset">快速注册</router-link> 
+						<router-link to="/forgotPassword" class="lpass">忘记密码?</router-link>
+					</div>
+				</div>
+			</form>
+			<a href="javascript:;" class="login_btn" @click="loginFun">登录</a>
+			<p class="loginTips" :style="{display: displayStyle}" id="loginTips"><span>{{tips}}</span></p>
+			<div class="cooperative-login" id="Jlogin">	     
+	            <div class="box" v-if="wechatAgent == true">
+	                <a href="#" class="l-g-b">
+	                    <img src="../assets/images/login_wechat.com@2x.png">
+	                    <p>微信登录</p>
+	                </a>
+	            </div>
+	            <div class="box" v-else>
+	                <a href="mitchell://third_login?type=sina_weibo" class="l-g-b">
+	                    <img src="../assets/images/login_sina.com@2x.png">
+	                    <p>微博登录</p>
+	                </a>
+	                <a href="mitchell://third_login?type=wechat" class="l-g-b">
+	                    <img src="../assets/images/login_wechat.com@2x.png">
+	                    <p>微信登录</p>
+	                </a>
+	                <a href="mitchell://third_login?type=qq" class="l-g-b">
+	                    <img src="../assets/images/login_qq_com@2x.png">
+	                    <p>QQ登录</p>
+	                </a>
+	            </div>
+	        </div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			dataJson : {},
+			tips : '',
+			eyeClass : false,
+			displayStyle : 'none',
+			userAgent : navigator.userAgent.toLowerCase(),
+			wechatAgent : false,
+			switch : false,
+		}
+	},
+	create(){
+		this.wechatAgent = ( this.userAgent.indexOf('micromessenger') != -1 ) ? true : false;
+	},
+	methods: {
+		loginFun : function(){
+			var requestData = this.dataJson;
+			if ( !requestData['account'] ) {
+				this.processTips(1, '请输入手机号');
+				return;
+			} else if ( !this.verifyPhone(requestData['account']) ) {
+				this.processTips(1, '手机号格式不正确');
+				return;
+			} else if ( !requestData['password'] ) {
+				this.processTips(1, '请输入密码');
+			} else {
+				this.$http.post('/Shop/Login/login', requestData,{emulateJSON:true}).then(function(response){
+					var returnData = response.data;
+					if( returnData['status'] == '200000' ){
+						localStorage.clear();
+						localStorage.session_id = returnData['data']['session_id'];
+						var str = [{id:'',total:0,content:'',time:''}];
+						localStorage['messageList'] = JSON.stringify(str);
+						if ( this.wechatAgent == false ) {
+							window.location.href = "mitchell://login?user_id="+ returnData['data']['userId'] +'&session_id='+ returnData['data']['session_id'] +'&headimgurl='+ returnData['data']['headimgurl'] + '&nickname=' +returnData['data']['nickname'];
+						}
+						this.$router.push('/');
+					}else{
+						this.processTips(1, returnData['message']);
+					}
+				});
+			}
+		},
+		clearVal : function(){
+			this.dataJson = {};
+		},
+	    verifyPhone : function(telephone){
+		    var telReg = !!telephone.match(/^(0|86|17951)?(13[0-9]|15[012356789]|17[6780]|18[0-9]|14[57])[0-9]{8}$/);
+		    return telReg;
+	    },
+		processTips : function(show, tips){
+			if ( show ) {
+				this.tips = tips;
+				this.displayStyle = 'block';
+				this.switch = true;
+			} else {
+				this.displayStyle = 'none';
+				this.switch = false;
+			}
+			if ( this.switch == true ) {
+				setTimeout(this.processTips, 4000);
+			}
+		},
+		showEye : function(){
+			var password = document.getElementById('Kpassword');
+			if ( this.eyeClass == false ) {
+				this.eyeClass = true;
+				password.setAttribute('type', 'text');
+			} else {
+				this.eyeClass = false;
+				password.setAttribute('type', 'password');
+			}
+		},
+		focusPosition : function(){
+			var Jlogin = document.getElementById("Jlogin");
+			Jlogin.style.position = "relative";
+		},
+		blurPosition : function(){
+			var Jlogin = document.getElementById("Jlogin");
+			Jlogin.style.position = "fixed";
+		}
+	}
+
+}
+</script>
+

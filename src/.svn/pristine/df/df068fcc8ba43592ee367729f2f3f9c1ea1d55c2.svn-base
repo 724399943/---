@@ -1,0 +1,159 @@
+<template>
+  	<div class="content" id="messageIndex">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">消息</h1>
+		</header>
+		<div class="main">
+			<div class="news_wrap">
+				<div class="system_news">
+					<router-link to="/systemMessage">
+						<div class="imgbox">
+							<img src="../assets/images/system_ico.png">
+						</div>
+						<div class="s_new_m">
+							<p class="stt"><span>系统消息</span><em>{{system.add_time | filterTime}}</em></p>
+							<div class="nmt">{{system.title}}</div>
+						</div>
+					</router-link>
+				</div>				
+				<div class="chat_news">
+					<ul>
+						<li v-for="(data, index) in list">
+							<router-link :to="{name:'consultation', query:{uid:userInfo['id'],aid:data['id'],aname:data['agent_name']}}" v-if="wechatAgent == true">
+								<div class="cnews">
+									<div class="imgbox">
+										<img :src="data['headimgurl']">
+									</div>
+									<div class="s_new_m">
+										<p class="stt"><span>{{data['nickname']}}</span><em>{{data['add_time'] | filterTime}}</em></p>
+										<p class="nmt">{{data['content']['content']}}</p>
+									</div>
+								</div>
+							</router-link>
+							<a :href="'mitchell://chat?user_id='+ data['id'] +'&nickname='+ userInfo['nickname'] +'&headimgurl='+ userInfo['headimgurl']" v-else>
+								<div class="cnews">
+									<div class="imgbox">
+										<img :src="data['headimgurl']">
+									</div>
+									<div class="s_new_m">
+										<p class="stt"><span>{{data['nickname']}}</span><em>{{data['add_time'] | filterTime}}</em></p>
+										<p class="nmt">{{data['content']['content']}}</p>
+									</div>
+								</div>
+							</a>
+						</li>	
+					</ul>
+				</div>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			uid : '',
+			userInfo : {},
+			system : {},
+			list : [],
+			dataJson : {
+				page : 0,
+			},
+			nomore : false,
+            noResult : false,
+            loadData : true,
+            userAgent : navigator.userAgent.toLowerCase(),
+			wechatAgent : false,
+		}
+	},
+	created(){
+		this.wechatAgent = ( this.userAgent.indexOf('micromessenger') != -1 ) ? true : false;
+		this.$store.commit('loading',{show:true,text:'加载中...'});
+		this.getData();
+		this.loadUserChat();
+	},
+	mounted(){
+		this.$store.commit('loading',{show:false});
+		this.loadMore();
+	},
+	filters:{
+		filterTime:function(timestamp){
+			timestamp = timestamp * 1000;
+			var date = new Date();
+			var now = date.getTime(); //当前时间戳
+
+			var date = new Date();
+			date.setHours(0);
+			date.setMinutes(0);
+			date.setSeconds(0);
+			date.setMilliseconds(0);
+			var today = date.getTime(); //今天0点时间戳
+
+			var timer = (now - timestamp) / 1000;   // 转换为秒级时间戳
+			var tips = '';
+			var timeTips = new Date(timestamp).getHours() + ' : ' + new Date(timestamp).getMinutes();
+			if (timer <= 0) {
+			  	tips = timeTips;
+			} else if (Math.floor(timer/60) <= 0) {
+			  	tips = timeTips;
+			} else if (timer < 3600) {
+			  	tips = timeTips;
+			} else if (timer >= 3600 && (timestamp - today >= 0) ) {
+			  	tips = timeTips;
+			} else {
+				var date = new Date(timestamp);
+				var month = date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1;
+				var day = date.getDate() < 10 ? '0' + date.getDate() : date.getDate();
+				tips = date.getFullYear() + '-' + month + "-" + day;
+			}
+			return tips;
+		},
+  	},
+	methods: {
+		getData(){
+			this.$http.post('/Shop/Message/index', {}, {emulateJSON:true}).then(function(response){
+				var returnData = response.data;
+				if( returnData.status == "200000" ){
+					this.uid = returnData.data.user.id;
+					this.userInfo = returnData.data.user;
+					this.system = returnData.data.system;
+				}
+			});
+		},
+		loadUserChat(){
+			var that = this;
+            if ( that.loadData == true ) {
+                that.dataJson.page++;
+                that.loadData = false;
+                that.$http.post('/Shop/Chat/chatHistory', that.dataJson, {emulateJSON:true}).then(function(response){
+                    var returnData = response['data'];
+                    if ( returnData['data']['list'].length ) {
+                        that.list = ( that.list.length ) ? that.list.concat(returnData['data']['list']) : returnData['data']['list'];
+                    } else {
+                        if ( that.list.length ) {
+                            that.nomore = true;
+                        } else {
+                            that.noResult = true;
+                        }
+                    }
+                    that.$nextTick(function () {
+                        that.loadData = true;
+                        // that.$store.commit('loading',{show:false});
+                    })
+                });
+            }
+		},
+		loadMore(){
+            this.$store.commit('scrollFun',{dom:'messageIndex',auto:true,bottomCall:function(){        
+                if ( this.nomore == false ) {
+                    this.loadUserChat();
+                }
+            }})
+        },
+	}
+
+}
+</script>
+

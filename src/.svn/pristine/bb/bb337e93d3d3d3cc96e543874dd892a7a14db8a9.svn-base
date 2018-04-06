@@ -1,0 +1,183 @@
+<template>
+  	<div class="content">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">订单详情</h1>			
+		</header>
+		<div class="main">
+			<div class="yyodetail">
+				<div class="ytodowntime" v-if="orderData.status == 0">剩{{dateJson.h}}小时{{dateJson.m}}分自动关闭</div>
+				<div class="y-trace-express">
+					<p>订单编号：{{orderData.order_sn}}</p>	
+					<span v-if="orderData.status == 0">待支付</span>
+					<span v-else-if="orderData.status == 1">待发货</span>	
+					<span v-else-if="orderData.status == 2">待收货</span>	
+					<span v-else-if="orderData.status == 3">待评价</span>	
+					<span v-else-if="orderData.status == 4">已完成</span>	
+					<span v-else-if="orderData.status == 5">作废</span>	
+					<span v-else-if="orderData.status == 6">退换货</span>				
+				</div>
+				<router-link :to="{name:'orderSchedule', query:{order_sn:orderData.order_sn}}">
+					<div class="yyorfinsh" v-if="orderData.status == 1">订单支付成功，等待处理</div>
+					<div class="yyorfinsh" v-else-if="orderData.status == 2">您的订单已经发货</div>
+					<div class="yyorfinsh" v-else-if="orderData.status == 3 || orderData.status == 4">您的订单已确认收货。感谢您在壹家无忧购物，欢迎再次光临。</div>
+				</router-link>
+				<a href="javascript:;" class="y-consignee-imfo">
+                    <div class="y-line1 clearfix">
+                      <div class="y-name"><em>{{orderData.consignee}}</em></div>   
+                      <div class="y-phone">{{phoneShow}}</div>
+                    </div>
+                    <p class="y-address">{{orderData.province}}{{orderData.city}}{{orderData.county}}{{orderData.address}}</p>
+                    <i class="y-icon2"></i>
+                </a>
+                <div class="yy-infoorder">
+                	<div class="in-goods" v-for="(item,index) in goodsData">
+            			<router-link :to="{name:'goodsDetail', query:{id:item.goods_id}}">
+		                    <div class="imgbox">
+		                        <img :src="item.goods_image">
+		                    </div>
+		                    <div class="ingmsg">
+		                        <p class="name db-overflow">{{item.goods_name}}</p>
+		                        <div class="invpn">
+		                            <span class="price" v-if="item.discounts_price != '0.00'">￥{{item.discounts_price}}</span>
+		                            <span class="price" v-else>￥{{item.unit_price}}</span>
+		                            <span class="num">x{{item.goods_number}}</span>
+		                        </div>
+		                        <div class="invattr">
+		                            <span>{{item.attr_list}}</span>
+		                            <span class="pn" v-if="item.is_install == 1">￥{{item.install_price}} x1</span>
+		                        </div>
+		                    </div>                        
+	            		</router-link>
+	                </div>
+                </div>
+                <div class="y-trace-express" v-if="orderData.status == 1 || orderData.status == 2 || orderData.status == 3 || orderData.status == 4">
+					<p v-if="orderData.pay_type == 0">支付方式：支付宝</p>
+					<p v-else-if="orderData.pay_type == 1">支付方式：微信</p>
+					<p v-else-if="orderData.pay_type == 2">支付方式：银联</p>				
+				</div>
+				<div class="yy-infoorder">
+					<div class="yyinder">
+						<span>商品总金额</span>
+						<em>￥{{Number(parseFloat(orderData.total) - parseFloat(orderData.coupon_total) - parseFloat(orderData.install_total)).toFixed(2)}}</em>
+					</div>
+					<div class="yyinder">
+						<span>安装服务费</span>
+						<em>+￥{{orderData.install_total}}</em>
+					</div>
+					<div class="yyinder">
+						<span>优惠券减免</span>
+						<em>-￥{{orderData.coupon_total}}</em>
+					</div>
+				</div>
+				<div class="yytotal">实付款： <span>{{orderData.total}}</span></div>
+				<div class="yyoddelbox">
+					<div class="yotbox" v-if="orderData.status == 0">
+						<a href="javascript:;" class="yyoddel" @click="delOrder">取消</a>
+						<router-link :to="{path:'/payment',query:{order_sn:orderData.order_sn,total:orderData.total}}" class="yyoddel">支付</router-link>
+					</div>
+					<div class="yotbox" v-else-if="orderData.status == 1">
+						<a href="javascript:;" class="yyoddel" @click="remindOrder(orderData.order_sn)">提醒发货</a>
+						<router-link to="/returnsAfterSales" class="yyoddel">申请退货</router-link>
+					</div>
+					<div class="yotbox" v-else-if="orderData.status == 2">
+						<router-link to="/returnsAfterSales" class="yyoddel">申请退货</router-link>
+						<a href="javascript:;" class="yyoddel">延期收货</a>
+						<a href="javascript:;" class="yyoddel" @click="receivedOrder(orderData.order_sn)">确认收货</a>
+					</div>
+					<div class="yotbox" v-else-if="orderData.status == 3">
+						<a href="javascript:;" class="yyoddel">评价</a>						
+					</div>
+					<div class="yotbox" v-else>
+						<a href="javascript:;" class="yyoddel" @click="delOrder">删除</a>
+					</div>
+				</div>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+    return {
+      orderData : {},
+      phoneShow : "",
+      goodsData : [],
+      dateJson : {h:0,m:0,s:0}
+    }
+  },
+  created(){
+    this.$store.commit('loading',{show:true,text:'加载中...'});
+    this.getData();
+  },
+  mounted(){
+  	  this.$store.commit('loading',{show:false});  
+  },
+  methods: {
+    getData(){
+    	this.$http.post('/Shop/Order/orderDetail', {order_sn:this.$route.query.order_sn},{emulateJSON:true}).then(function(response){
+          	if( response.data.status == "200000" ){
+              this.orderData = response.data.data.orderData;  
+              var str = this.orderData.telephone.substring(3,7);
+              this.phoneShow = this.orderData.telephone.replace(str,'****');   
+              this.goodsData = response.data.data.goodsData;
+              this.countDownFun();
+          	}    
+      	});
+    },
+	delOrder : function(){
+		var that = this;
+		this.$store.commit('confirm',{show:true,text:"确认删除订单？",call:function(){
+			that.$http.post('/Shop/Order/cancelTheOrder', {order_sn:that.$route.query.order_sn},{emulateJSON:true}).then(function(response){
+		        if( response.data.status == "200000" ){
+		        	window.history.go(-1);
+		            that.$store.commit('alert',{show:true,text:response.data.message});                      
+		        }    
+	        });
+		}})
+	},
+	remindOrder : function(order_sn){
+		this.$http.post('/Shop/Order/remindTheOrder', {order_sn:order_sn},{emulateJSON:true}).then(function(response){
+            if( response.data.status == "200000" ){
+                this.$store.commit('alert',{show:true,text:response.data.message});                      
+            }else{
+            	this.$store.commit('alert',{show:true,text:response.data.message});                      
+            }    
+        });
+	},
+	receivedOrder : function(order_sn){
+		var that = this;
+		this.$store.commit('confirm',{show:true,text:"如确定已收货，请确认收货；如未收到货，请谨慎确认。",call:function(){
+			that.$http.post('/Shop/Order/receivedTheOrder', {order_sn:order_sn},{emulateJSON:true}).then(function(response){
+		        if( response.data.status == "200000" ){
+		        	window.history.go(-1);
+		            that.$store.commit('alert',{show:true,text:response.data.message});                      
+		        }    
+	        });
+		}})
+	},
+	countDownFun : function(){
+		var that = this;		
+		if( that.orderData.status == 0 ){
+            var addTime = that.orderData.add_time; 
+            var nowTime = new Date(); 
+            var t = Date.parse(nowTime)/1000 - parseInt(addTime);       
+            var end = 10800000;
+            var countDown = end/1000 - t;
+            that.dateJson['h'] = Math.floor(countDown/60/60%24);
+            that.dateJson['m'] = Math.floor(countDown/60%60);
+	        if( countDown <= 0 ){
+				that.$http.post('/Shop/Order/cancelTheOrder', {order_sn:that.$route.query.order_sn},{emulateJSON:true}).then(function(response){
+			        if( response.data.status == "200000" ){
+			        	that.orderData.status == 5;                  
+			        }    
+		        });
+	        }
+      	}
+	}
+  }
+
+}
+</script>
+

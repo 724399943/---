@@ -1,0 +1,114 @@
+<template>
+  	<div class="content">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">申请入驻</h1>
+		</header>
+		<div class="main">
+			<div class="appAdmissCont">
+				<div class="addMain" v-if="applyStep == '0'" v-html="articleDetail['content']"></div>
+				<div class="addOntext" v-else>
+					<div class="admissInput">
+						<span>姓名</span>
+						<input type="text" placeholder="请输入姓名" v-model="dataJson['name']">
+					</div>
+					<div class="admissInput">
+						<span>手机号</span>
+						<input type="text" placeholder="请输入手机号码" v-model="dataJson['phone']" :disabled="disabled">
+					</div>
+					<div class="admissInput">
+						<span>店铺名称</span>
+						<input type="text" placeholder="请输入店铺名称" v-model="dataJson['agent_name']">
+					</div>
+					<div class="admissInput">
+						<span>店铺地址</span>
+						<input type="text" placeholder="请选择地区">
+					</div>
+					<div class="admissInput">
+						<span>详细地址</span>
+						<input type="text" placeholder="请输入详细地址" v-model="dataJson['address']">
+					</div>
+				</div>
+				<a href="javascript:;" class="addUpbtn" @click="applyForMerchant">申请入驻</a>
+			</div>
+			<!-- 弹窗 -->
+			<div class="appmiswin" :style="{display: boxShow}">
+				<div class="addwinbox">
+					<p>申请已提交，工作人员会在<br>3-5个工作日内联系您~</p>
+					<router-link to="/personalCenter">好的</router-link>
+				</div>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			boxShow : 'none',
+			articleDetail : {},
+			dataJson : {},
+			applyStep : 0,
+			disabled : false,
+		}
+	},
+	created(){
+		this.getArticleDetail();
+	},
+	computed: {
+
+	},
+	methods: {
+		getArticleDetail(){
+			var requestJson = {sign: 'applyForMerchant'};
+			this.$http.post('/Shop/Article/articleDetail', requestJson, {emulateJSON:true}).then(function(response){
+				var returnData = response['data'];
+				if ( returnData['status'] == '200000' ) {
+					this.articleDetail = returnData['data']['list'];
+				}
+			});
+		},
+		checkApplyFor(){
+			this.$http.post('/Shop/Agent/checkApplyFor', {}, {emulateJSON:true}).then(function(response){
+				var returnData = response['data'];
+				switch ( returnData['data']['state'] ) {
+					case '0' :
+						this.applyStep = '1';
+						break;
+					case '1' :
+						this.$store.commit('alert', {show:true,text:'您已申请过入驻商家，请等待审核'});
+						break;
+					case '2' :
+						this.$store.commit('alert', {show:true,text:'您已入驻商家'});
+						break;
+					case '3' :
+						this.applyStep = '1';
+						this.dataJson.name = returnData['data']['agentData']['name'];
+						this.dataJson.phone = returnData['data']['agentData']['phone'];
+						this.dataJson.agent_name = returnData['data']['agentData']['agent_name'];
+						this.dataJson.address = returnData['data']['agentData']['address'];
+						this.disabled = true;
+						break;
+				}
+			});
+		},
+		applyForMerchant(){
+			if ( this.applyStep == '0' ) {
+				this.checkApplyFor();
+			} else {
+				this.$http.post('/Shop/Agent/applyForMerchant', this.dataJson, {emulateJSON:true}).then(function(response){
+					var returnData = response['data'];
+					if ( returnData['status'] == '200000' ) {
+						this.boxShow = 'block';
+					} else {
+						this.$store.commit('alert', {show:true,text:returnData['message']});
+					}
+				});
+			}
+		}
+	}
+
+}
+</script>
+

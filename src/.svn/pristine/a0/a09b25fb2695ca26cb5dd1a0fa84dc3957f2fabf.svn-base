@@ -1,0 +1,182 @@
+<template>
+  	<div class="content">
+        <header class="head">
+        	<a href="javascript:;" class="back" @click="toOrderInfo"></a>
+        	<h1 class="y-confirm-order-h1">商品清单</h1>
+        </header>
+        <div class="main">
+            <div class="inv-g-wrap">
+                <div class="invgs" v-for="(data,index) in list">
+                    <p class="in-shop">{{data['agent_name']}}</p>
+                    <div class="in-goods" v-for="(goods,key) in data['goodsList']">
+                        <div class="imgbox">
+                            <img :src="goods['goods_image']">
+                        </div>
+                        <div class="ingmsg">
+                            <p class="name db-overflow">{{goods['goods_name']}}</p>
+                            <div class="invpn">
+                                <span class="price" v-if="goods['sale_id'] != '0' || goods['daily_id'] != '0'">￥{{goods['promotionData']['promotion_price']}}</span>
+                                <span class="price" v-else>￥{{goods['goods_price']}}</span>
+                                <span class="num">x{{goods['goods_number']}}</span>
+                            </div>
+                            <div class="invattr" v-if="install[goods['goods_id']] == '0'">
+                                <span>{{goods['attr_list']}}</span>
+                            </div>
+                            <div class="invattr" v-else>
+                                <span>{{goods['attr_list']}} 上门安装</span>
+                                <span class="pn">￥{{goods['install_price']}} x1</span>
+                            </div>
+                        </div>                        
+                    </div>
+                    <div class="yy-kinli" v-if="agentCouponData[data['agent_id']]['canUseCoupon'] == 0">
+                        <span class="name">店铺优惠券</span>
+                        <span class="notext">无优惠券可用</span>
+                    </div>
+                    <div class="yy-kinli" v-else-if="agentCouponData[data['agent_id']]['canUseCoupon'] == 1" @click="chooseCoupon(data['agent_id'])">
+                        <span class="name">店铺优惠券</span>
+                        <span class="notext">未使用</span>
+                    </div> 
+                    <div class="yy-kinli" v-else-if="agentCouponData[data['agent_id']]['canUseCoupon'] == 2" @click="chooseCoupon(data['agent_id'])">
+                        <span class="name">店铺优惠券</span>
+                        <span class="coupon">已选{{agentCouponData[data['agent_id']]['couponNumber']}}张</span>
+                        <span class="money">-￥: {{agentCouponData[data['agent_id']]['couponTotal']}}</span>
+                    </div>
+                    <div class="invresmsg">
+                        <span>给商家留言：</span>
+                        <input type="text" maxlength="140" placeholder="选填，不超过140字" :id="'Kmessage_' + data['agent_id']" :value="message[data['agent_id']]">
+                    </div>
+                </div>
+            </div>
+        </div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+        return {
+            dataJson : {
+                consignee_id : ( this.$route.query.consignee_id ) ? this.$route.query.consignee_id : '',
+                is_buy :  ( this.$route.query.is_buy ) ? this.$route.query.is_buy : '0',
+                coupon_type : ( this.$route.query.coupon_type ) ? this.$route.query.coupon_type : '0',
+                ids : ( this.$route.query.ids ) ? this.$route.query.ids : '',
+                message : ( this.$route.query.message ) ? this.$route.query.message : '',
+                install : ( this.$route.query.install ) ? this.$route.query.install : '',
+                coupon : ( this.$route.query.coupon ) ? this.$route.query.coupon : '',
+            },
+            list : [],
+            install : {},
+            message : {},
+            agentData : [],
+            agentCouponData : {},
+        }
+    },
+    created(){
+        this.$store.commit('loading',{show:true,text:'加载中...'});
+        this.getData();
+    },
+    mounted(){
+        this.$store.commit('loading',{show:false});
+    },
+    computed: {
+
+    },
+    methods: {
+        getData : function(){
+            this.$http.post('/Shop/Shop/orderInfo', this.dataJson, {emulateJSON:true}).then(function(response){
+                var returnData = response['data'];
+                if( returnData['status'] == "200000" ){
+                    this.list = returnData['data']['list'];
+                    var agentCouponData = {};
+                    for (var i = 0; i < this.list.length; i++) {
+                        var data = this.list[i],
+                            agent_id = data['agent_id'];
+                        this.agentData.push(agent_id);
+                        agentCouponData[agent_id] = {};
+                        agentCouponData[agent_id]['canUseCoupon'] = 0;
+                        agentCouponData[agent_id]['couponNumber'] = 0;
+                        agentCouponData[agent_id]['couponTotal'] = 0;
+                        agentCouponData[agent_id]['total'] = data['total'];
+                        agentCouponData[agent_id]['installTotal'] = data['installTotal'];
+                    }
+                    this.agentCouponData = agentCouponData;
+                    
+                    if ( this.dataJson.install ) {
+                        // var installData = eval('(' + this.dataJson.install + ')');
+                        var installData = JSON.parse(this.dataJson.install);
+                        for ( var i in installData ) {
+                            var data = installData[i];
+                            this.install[data['goods_id']] = data['install'];
+                        }
+                    }
+                    if ( this.dataJson.message ) {
+                        // var messageData = eval('(' + this.dataJson.message + ')');
+                        var messageData = JSON.parse(this.dataJson.message);
+                        for ( var i in messageData ) {
+                            var data = messageData[i];
+                            this.message[data['agent_id']] = data['message'];
+                        }
+                    }
+                    this.userCanUseCoupon();
+                }
+            });
+        },
+        userCanUseCoupon(){
+            var requestJson = {agent_id: this.agentData.join(',')};
+            this.$http.post('/Shop/Coupon/userCanUseCoupon', requestJson, {emulateJSON:true}).then(function(response){
+                var returnData = response['data'];
+                if( returnData['status'] == "200000" ){
+                    var couponList = returnData['data']['list'];
+                    for (var i = 0; i < couponList.length; i++) {
+                        var couponData = couponList[i],
+                            agent_id = couponData['agent_id'],
+                            min_cost = Number(couponData['min_cost']);
+                        if ( this.agentData.indexOf(agent_id) != '-1' ) {
+                            var realTotal = Number(this.agentCouponData[agent_id]['total']) +  Number(this.agentCouponData[agent_id]['installTotal']);
+                            if ( min_cost <= realTotal ) {
+                                this.agentCouponData[agent_id]['canUseCoupon'] = 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ( this.dataJson.coupon ) {
+                        // var couponList = eval('(' + this.dataJson.coupon + ')');
+                        var couponList = JSON.parse(this.dataJson.coupon);
+                        for (var i = 0; i < couponList.length; i++) {
+                            var couponData = couponList[i],
+                                agent_id = couponData['agent_id'];
+                            if ( agent_id != '0' ) {
+                                this.agentCouponData[agent_id]['couponTotal'] = Number(couponData['coupon_value']);
+                                this.agentCouponData[agent_id]['couponNumber']++;
+                                this.agentCouponData[agent_id]['canUseCoupon'] = 2;
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        toOrderInfo(){
+            this.dataJson.message = [];
+            for ( var i in this.agentData ) {
+                var data = this.agentData[i];
+                this.dataJson.message[i] = {};
+                this.dataJson.message[i]['agent_id'] = data;
+                this.dataJson.message[i]['message'] = document.getElementById('Kmessage_'+data).value;
+            }
+            this.dataJson.message = JSON.stringify(this.dataJson.message);
+            this.$router.push({name: 'orderInfo', query: this.dataJson});
+        },
+        chooseCoupon(agent_id){
+            var queryJson = this.dataJson;
+            queryJson['installTotal'] = this.agentCouponData[agent_id]['installTotal'];
+            queryJson['total'] = this.agentCouponData[agent_id]['total'];
+            queryJson['coupon_type'] = 0;
+            queryJson['agent_id'] = agent_id;
+            this.$router.push({name: 'myCoupons', query: queryJson});
+        },
+    }
+
+}
+</script>
+

@@ -1,0 +1,388 @@
+<template>
+  	<div class="content" id="MyCollect">
+    		<header class="head">
+            <router-link to="/personalCenter">
+      				<a href="javascript:window.history.go(-1);" class="back"></a>
+            </router-link>
+      				<h1 class="y-confirm-order-h1">
+                  <span :class="{on:is_tab == 'goods'}" @click="navFun('goods')">商品</span>
+                  <span :class="{on:is_tab == 'shop'}" @click="navFun('shop')">店铺</span>
+                  <span :class="{on:is_tab == 'article'}" @click="navFun('article')">文章</span>    
+              </h1>
+              <span class="text" @click="editFun" v-if="is_edit == 0">编辑</span>
+              <span class="text" @click="multiDel('close')" v-else>完成</span>
+  		  </header>
+        <div class="main">
+            <div class="collectWrap">
+                <!-- 商品 -->
+                <div class="cmgoods-m" v-if="is_tab == 'goods'">
+                    <template v-for="(item,index) in list">
+                        <div class="mm-cgwl" :class="{touchleft:is_target == index,touchright:is_target == -1}" @touchstart="bindEvent">
+                            <div class="s_goods_wrap" v-if="is_edit == 1">
+                                <div class="s_cbox">
+                                    <input type="checkbox" name="" :id="item.id" :value="item.id" v-model="collectID" @change="choiceFun(index)"> 
+                                    <label :for="item.id"></label>
+                                </div>
+                            </div>
+                            <router-link :data-index=index :to="{path:'/goodsDetail',query:{id:item.goods_id,url:'collectionGoods'}}" class="coll-a">
+                                <div class="imgbox">
+                                    <img :src="item.goods_image">
+                                </div>
+                                <div class="m-ggmsg" :class="{yi:is_edit == 1}">
+                                    <p class="name db-overflow">{{item.goods_name}}</p>
+                                    <p class="price">￥ {{item.goods_price}}</p>
+                                </div>
+                            </router-link>
+                            <div class="m-delbtn" v-if="is_edit == 0" @click="sigleDel(index,item.id)">
+                                <span>删除</span>
+                            </div>
+                        </div>
+                    </template>
+                    <div class="mm-czbtn" v-if="is_edit == 1">
+                        <div class="czm">
+                            <div class="czmcheck">
+                                <div class="checkboxs">
+                                    <input type="checkbox" name="" id="AllCheck" :value="AllCheck" v-model="AllCheck" @change="allChoiceFun"> 
+                                    <label for="AllCheck"></label>
+                                </div>
+                            </div>
+                            <span>全选</span>
+                        </div>
+                        <div class="czbtn">
+                            <span @click="multiDel('close')">取消</span>
+                            <span @click="multiDel('open')">删除</span>
+                        </div>
+                    </div>
+                    <!-- 弹窗 -->
+                     <div class="outOrder" v-if="is_edit == 1 && is_del == 1">
+                          <div class="outBox">
+                              <p>确认删除所选商品吗？</p>
+                              <div class="btn">
+                                  <span @click="multiDel('cancel')">暂不删除</span>
+                                  <span class="mline" @click="multiDel('del')">确认删除</span>
+                              </div>
+                          </div>
+                     </div>
+                </div>                
+                <!-- 店铺 -->
+                <div class="cmshop-m" v-else-if="is_tab == 'shop'">
+                  <div class="cmspop">
+                    <ul class="expul">
+                      <template v-for="(shop,inde) in list">
+                          <li :class="{touchleft:is_target == inde,touchright:is_target == -1}" @touchstart="bindEvent">
+                            <div class="s_goods_wrap" v-if="is_edit == 1">
+                                <div class="s_cbox">
+                                    <input type="checkbox" name="" :id="shop.id" :value="shop.id" v-model="collectID" @change="choiceFun(inde)"> 
+                                    <label :for="shop.id"></label>
+                                </div>
+                            </div>
+                            <div class="coll-a">
+                              <div class="imgbox" :data-index=inde>
+                                <router-link :to="{path:'/shopDetails',query:{id:shop.agent_id,url:'collectionShop'}}">
+                                  <img :src="shop.logo">
+                                </router-link>  
+                              </div>
+                                <div class="pp-msg" :data-index=inde :class="{yi:is_edit == 1}">
+                                  <router-link :to="{path:'/shopDetails',query:{id:shop.agent_id,url:'collectionShop'}}">
+                                  <p class="name db-overflow">{{shop.agent_name}}</p>
+                                  <div class="address">
+                                    {{shop.address}}
+                                  </div>
+                                  </router-link>
+                                  <div class="pp-btn">
+                                    <span @click="jumpToNav(shop['latitude'],shop['longitude'],shop['address'])">导航到店</span>
+                                    <span class="red" @click="jumpToPanorama(shop['panorama'])">全景逛店</span>
+                                  </div>
+                                </div>
+                            </div> 
+                            <div class="m-delbtn" v-if="is_edit == 0" @click="sigleDel(inde,shop.id)">
+                                <span>删除</span>
+                            </div>
+                          </li>    
+                      </template>               
+                    </ul>
+                  </div>
+                  <div class="mm-czbtn" v-if="is_edit == 1">
+                      <div class="czm">
+                          <div class="czmcheck">
+                              <div class="checkboxs">
+                                  <input type="checkbox" name="" id="AllCheck" :value="AllCheck" v-model="AllCheck" @change="allChoiceFun"> 
+                                  <label for="AllCheck"></label>
+                              </div>
+                          </div>
+                          <span>全选</span>
+                      </div>
+                      <div class="czbtn">
+                          <span @click="multiDel('close')">取消</span>
+                          <span @click="multiDel('open')">删除</span>
+                      </div>
+                  </div>
+                  <!-- 弹窗 -->
+                   <div class="outOrder" v-if="is_edit == 1 && is_del == 1">
+                        <div class="outBox">
+                            <p>确认删除所选店铺吗？</p>
+                            <div class="btn">
+                                <span @click="multiDel('cancel')">暂不删除</span>
+                                <span class="mline" @click="multiDel('del')">确认删除</span>
+                            </div>
+                        </div>
+                   </div>
+                </div>                
+                <!-- 文章 -->
+                <div class="cmcircle-m" v-if="is_tab == 'article'">
+                    <div class="circlm">
+                      <ul class="inforUl">
+                        <template v-for="(art,ind) in list">
+                            <li :class="{touchleft:is_target == ind,touchright:is_target == -1}" @touchstart="bindEvent">
+                                <div class="s_goods_wrap" v-if="is_edit == 1">
+                                    <div class="s_cbox">
+                                        <input type="checkbox" name="" :id="art.id" :value="art.id" v-model="collectID" @change="choiceFun(ind)"> 
+                                        <label :for="art.id"></label>
+                                    </div>
+                                </div>
+                                <router-link :data-index=ind :to="{path:'/informationDetail',query:{id:art.article_id,url:'collectionArticle'}}" class="coll-a">
+                                      <div class="pp-msg" :class="{yi:is_edit == 1}">
+                                          <p class="db-overflow">{{art.title}}</p>
+                                          <div class="sju">
+                                              <span class="look">{{art.view_number}}</span>
+                                              <span class="live">{{art.collect_number}}</span>
+                                          </div>
+                                      </div>
+                                      <div class="imgbox">
+                                          <img :src="art.image">
+                                      </div>
+                                </router-link>
+                                <div class="m-delbtn" v-if="is_edit == 0" @click="sigleDel(ind,art.id)">
+                                    <span>删除</span>
+                                </div>
+                            </li>  
+                        </template>                        
+                      </ul>
+                    </div>
+                    <div class="mm-czbtn" v-if="is_edit == 1">
+                        <div class="czm">
+                            <div class="czmcheck">
+                                <div class="checkboxs">
+                                    <input type="checkbox" name="" id="AllCheck" :value="AllCheck" v-model="AllCheck" @change="allChoiceFun"> 
+                                    <label for="AllCheck"></label>
+                                </div>
+                            </div>
+                            <span>全选</span>
+                        </div>
+                        <div class="czbtn">
+                            <span @click="multiDel('close')">取消</span>
+                            <span @click="multiDel('open')">删除</span>
+                        </div>
+                    </div>
+                    <!-- 弹窗 -->
+                     <div class="outOrder" v-if="is_edit == 1 && is_del == 1">
+                          <div class="outBox">
+                              <p>确认删除所选文章吗？</p>
+                              <div class="btn">
+                                  <span @click="multiDel('cancel')">暂不删除</span>
+                                  <span class="mline" @click="multiDel('del')">确认删除</span>
+                              </div>
+                          </div>
+                     </div>
+                </div>                
+            </div>
+        </div>
+  	</div>
+</template>
+<script>
+export default {
+
+  data () {
+    return {
+      list : [],
+      hasAjax:0,
+      page : 1,
+      is_tab : (this.$route.query.is_tab) ? this.$route.query.is_tab : 'goods',
+      is_type : 0,
+      startX : 0,
+      is_target : -1,
+      is_edit : 0,
+      collectID : [],
+      AllCheck : '',
+      is_del : 0,
+      is_delIndex : [],
+      iphone : false,
+      android : false,
+    }
+  },
+  created(){
+    var ua = navigator.userAgent.toLowerCase();
+    if (ua.indexOf('micromessenger') == -1) {
+      if (ua.indexOf('iphone') != -1 || ua.indexOf('ipad') != -1 || ua.indexOf('ipod') != -1) {
+        this.iphone = true;
+        this.android = false;
+      } else {
+        this.iphone = false;
+        this.android = true;
+      }
+    }
+    this.$store.commit('loading',{show:true,text:'加载中...'});
+    this.getData();
+  },    
+  mounted(){
+    this.$store.commit('loading',{show:false});
+  },
+  methods: {
+    getData(){
+      var postUrl = '';
+      if( this.is_tab == 'goods' ){
+        postUrl = '/Shop/Collect/collectGoods';
+      }else if( this.is_tab == 'shop' ){
+        postUrl = '/Shop/Collect/collectAgent';
+      }else if( this.is_tab == 'article'){
+        postUrl = '/Shop/Collect/collectArticle';
+      }
+      if( this.hasAjax == 0 ){
+          this.hasAjax = 1;
+          this.$http.post( postUrl, {page:this.page},{emulateJSON:true}).then(function(response){
+            this.hasAjax = 0;
+            if( this.page == 0 ){
+              this.list = response.data.data.list;
+              this.page++;              
+            }else{
+              if( response.data.data.list.length == 0 ){                
+                this.hasAjax = 1;
+              }else{
+                this.page++;
+                this.list = this.list.concat(response.data.data.list);
+              }
+            }
+            this.$store.commit('loading',{show:false});                               
+            });
+      }
+    },
+    loadMore(){         
+        var that = this;
+        this.$store.commit('scrollFun',{dom:"MyCollect",auto:true,bottomCall:function(){           
+          that.getData();
+        }})
+    },
+    editFun : function(){
+      this.is_edit = 1;
+      this.is_target = -1;
+    },
+    navFun : function(type){
+      this.list = [];
+      this.hasAjax = 0;
+      this.page = 1;
+      this.collectID = [];
+      this.is_delIndex = [];
+      switch (type){
+        case 'goods':
+            this.is_tab = type;
+            this.is_type = 0;
+            this.getData();
+        break;
+        case 'shop':
+            this.is_tab = type;
+            this.is_type = 1;
+            this.getData();
+        break;
+        case 'article':
+            this.is_tab = type;
+            this.is_type = 2;
+            this.getData();
+        break;
+      }
+    },
+    sigleDel : function(index,id){      
+      this.$http.post('/Shop/Collect/delCollect', {ids:id,type:this.is_type},{emulateJSON:true}).then(function(response){
+          if( response.data.status == "200000" ){
+              this.$store.commit('alert',{show:true,text:response.data.message}); 
+              this.list.splice(index,1);   
+              this.is_target = -1;               
+          }    
+      });
+    },
+    multiDel : function(type){
+      if( type == "del" ){
+        var ids = this.collectID.join(',');
+        this.$http.post('/Shop/Collect/delCollect', {ids:ids,type:this.is_type},{emulateJSON:true}).then(function(response){
+            if( response.data.status == "200000" ){
+                this.$store.commit('alert',{show:true,text:response.data.message}); 
+                this.is_del = 0;  
+                for( var i = 0;i < this.is_delIndex.length+1;i++ ){
+                    this.list.splice(this.is_delIndex[i],1);
+                }                      
+            }    
+        });
+      }else if( type == "close" ){
+        this.is_edit = 0;
+        this.collectID = [];
+      }else if( type == "open" ){
+        this.is_del = 1;
+      }else{
+        this.is_del = 0;
+      }
+    },
+    choiceFun : function(index){      
+      if( this.collectID.length == this.list.length ){
+        this.AllCheck = "AllCheck";
+      }else{
+        this.AllCheck = "";
+      }
+      if( event.target.checked ){
+        this.is_delIndex.push(index);
+      }else{
+        for( var i = 0;i< this.is_delIndex.length;i++ ){
+          if( this.is_delIndex[i] == index ){
+            this.is_delIndex.splice(i,1);
+          }
+        }
+      }
+    },
+    allChoiceFun : function(){
+      if( event.target.checked ){
+        for( var i = 0;i < this.list.length;i++ ){
+            this.collectID.push(this.list[i].id);
+            this.is_delIndex.push(i);
+        }
+      }else{
+        this.collectID = [];
+      }
+    },
+    touchSatrtFun : function(event){
+      if( this.is_edit == 0 ){
+        var x = Number(event.touches[0].pageX);
+        this.startX = x;             
+      } 
+    },
+    touchMoveFun : function(event){  
+      if( this.is_edit == 0 ){
+        var x = Number(event.touches[0].pageX); 
+        var index = event.target.parentNode.parentNode.getAttribute('data-index');
+        if( x - this.startX < 0 ){
+          this.is_target = index;
+        }else{
+          this.is_target = -1;
+        }        
+      }   
+    },
+    bindEvent : function(){
+      if( this.is_edit == 0 ){
+        document.addEventListener('touchstart', this.touchSatrtFun, false);
+        document.addEventListener('touchmove', this.touchMoveFun, false);
+      }
+    },
+    jumpToPanorama(url){
+      if ( this.android === true ) {
+        window.location.href = url;
+      } else {
+        var title = encodeURI('全景逛店'),
+        uri = encodeURIComponent(url);
+        window.location.href = "mitchell://blank?url="+ uri +"&title="+ title;
+      }
+    },
+    jumpToNav(lat,lng,address){
+      window.location.href = "mitchell://navigation?lat="+ lat +"&lng="+ lng + "&poiName=" + address;
+    }
+  }
+
+}
+</script>
+

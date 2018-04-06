@@ -1,0 +1,109 @@
+<template>
+  	<div class="content" id="allEvaluation">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">全部评价</h1>
+		</header>
+		<div class="main">
+			<div class="goods_assess" v-for="(data,index) in commentList">
+				<div class="eva_list_box">
+					<div class="user_eva">
+						<div class="eva_top">
+							<div class="eva_user tlf">
+								<img :src="data['headimgurl']">
+								<span>{{data['nickname']}}</span>
+							</div>
+							<div class="eva_star_cont tlf">
+								<div class="eva_star_box" :class="{on : data.star>=1}"></div>
+								<div class="eva_star_box" :class="{on : data.star>=2}"></div>
+								<div class="eva_star_box" :class="{on : data.star>=3}"></div>
+								<div class="eva_star_box" :class="{on : data.star>=4}"></div>
+								<div class="eva_star_box" :class="{on : data.star>=5}"></div>
+								<div class="fen">{{data['star']}}分</div>
+							</div>
+						</div>
+						<p class="etext">{{data['contain']}}</p>
+						<div class="eva_goodsimg">
+							<div class="imgbox" v-for="(image,imageIndex) in data['images']">
+								<img :src="image" @click="showImage(image)">
+							</div>							
+						</div>
+						<div class="eva_goods_cont">
+							<span class="etime">{{data['add_time'] | time}}</span>
+						</div>
+					</div>					
+				</div>				
+			</div>
+		</div>
+		<!-- 弹窗 -->
+		<div class="mask" :style="{display: maskStyle}"></div>
+		<div class="msevaimg" :style="{display: msevaimgStyle}" @click="processText(0)">
+			<img :src="image">
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			dataJson : {
+				goods_id : this.$route.query.id,
+				page : 0,
+			},
+			commentList : [],
+			maskStyle : 'none',
+			msevaimgStyle : 'none',
+			loadData : true,
+			image : '',
+		}
+	},
+	created(){
+		this.getGoodsComment();
+	},
+	mounted(){
+		this.loadMore();
+	},
+	methods: {
+		getGoodsComment(){
+			var that = this;
+			if ( that.loadData == true ) {
+				that.dataJson.page++;
+				that.loadData = false;
+				that.$http.post('/Shop/GoodsComment/goodsComment', that.dataJson, {emulateJSON:true}).then(function(response){
+					var returnData = response['data'];
+					if ( returnData['data']['list'].length ) {
+					that.commentList = ( that.commentList.length ) ? that.commentList.concat(returnData['data']['list']) : returnData['data']['list'];
+					}
+					that.$nextTick(function () {
+						that.loadData = true;
+					})
+				});
+			}
+		},
+		processText(type){
+			if ( type == 1 ) {
+				this.maskStyle = 'block';
+				this.msevaimgStyle = 'block';
+			} else {  
+				this.maskStyle = 'none';
+				this.msevaimgStyle = 'none';
+			}
+		},
+		loadMore(){         
+			var that = this;
+			that.$store.commit('scrollFun',{dom:'allEvaluation', auto:true, bottomCall:function(){           
+				if ( that.nomore == false ) {
+					that.getGoodsComment();
+				}
+			}})
+		},
+		showImage(image){
+			this.image = image;
+			this.processText(1);
+		}
+	}
+
+}
+</script>
+

@@ -1,0 +1,268 @@
+<template>
+  	<div class="content" id="messageIndex">
+  		<header class="head">
+			<a class="back" href="javascript:window.history.go(-1);"></a>
+			<h1 class="y-confirm-order-h1">消息</h1>
+		</header>
+		<div class="main">
+			<div class="news_wrap">
+				<div class="system_news">
+					<router-link to="/systemMessage">
+						<div class="imgbox">
+							<img src="../assets/images/system_ico.png">
+						</div>
+						<div class="s_new_m">
+							<p class="stt"><span>系统消息</span><em>{{system.add_time | filterTime}}</em></p>
+							<div class="nmt">{{system.title}}</div>
+						</div>
+					</router-link>
+				</div>				
+				<div class="chat_news">
+					<ul>
+						<li v-for="(data, index) in list" @click="jumpToChat(userInfo['id'],data['id'],data['nickname'],data['headimgurl'])">
+							<div class="cnews">
+								<div class="imgbox">
+									<img :src="data['headimgurl']">
+									<em class="dot" v-if="data['count']>0">{{data['count']}}</em>
+								</div>
+								<div class="s_new_m">
+									<p class="stt"><span>{{data['nickname']}}</span><em>{{data['add_time'] | filterTime}}</em></p>
+									<p class="nmt" v-if="data['content'] && data['content']['type'] == '1'">{{data['content']['content']}}</p>
+									<p class="nmt" v-else-if="data['content'] && data['content']['type'] == '2'">[图片]</p>
+									<p class="nmt" v-else-if="data['content'] && data['content']['type'] == '3'">[语音]</p>
+								</div>
+							</div>
+						</li>	
+					</ul>
+				</div>
+			</div>
+		</div>
+  	</div>
+</template>
+<script>
+export default {
+
+	data () {
+		return {
+			uid : '',
+			userInfo : {},
+			system : {},
+			list : [],
+			dataJson : {
+				page : 0,
+			},
+			nomore : false,
+            noResult : false,
+            loadData : true,
+            userAgent : navigator.userAgent.toLowerCase(),
+			wechatAgent : false,
+			from : '',
+		}
+	},
+	beforeCreate(){
+		this.$store.commit('imini');
+	},
+	created(){
+		// this.wechatAgent = true;
+		this.wechatAgent = ( this.userAgent.indexOf('micromessenger') != -1 ) ? true : false;
+		this.$store.commit('loading',{show:true,text:'加载中...'});
+		this.getData();
+		this.loadUserChat();
+	},
+	mounted(){
+		this.$store.commit('loading',{show:false});
+		this.loadMore();
+	},
+	watch : {
+		'$store.state.messageData':'createMessage',
+	},
+	filters:{
+		filterTime:function(timestamp){
+			timestamp = timestamp * 1000;
+			var date = new Date();
+			var now = date.getTime(); //当前时间戳
+
+			var date = new Date();
+			date.setHours(0);
+			date.setMinutes(0);
+			date.setSeconds(0);
+			date.setMilliseconds(0);
+			var today = date.getTime(); //今天0点时间戳
+
+			var timer = (now - timestamp) / 1000;   // 转换为秒级时间戳
+			var tips = '';
+			var timeTips = new Date(timestamp).getHours() + ' : ' + new Date(timestamp).getMinutes();
+			if (timer <= 0) {
+			  	tips = timeTips;
+			} else if (Math.floor(timer/60) <= 0) {
+			  	tips = timeTips;
+			} else if (timer < 3600) {
+			  	tips = timeTips;
+			} else if (timer >= 3600 && (timestamp - today >= 0) ) {
+			  	tips = timeTips;
+			} else {
+				var date = new Date(timestamp);
+				var month = date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1;
+				var day = date.getDate() < 10 ? '0' + date.getDate() : date.getDate();
+				tips = date.getFullYear() + '-' + month + "-" + day;
+			}
+			return tips;
+		},
+  	},
+	methods: {
+		getData(){
+			this.$http.post('/Shop/Message/index', {}, {emulateJSON:true}).then(function(response){
+				var returnData = response.data;
+				if( returnData.status == "200000" ){
+					this.uid = returnData.data.user.id;
+					this.userInfo = returnData.data.user;
+					this.system = returnData.data.system;
+				}
+			});
+		},
+		loadUserChat(){
+			var that = this;
+            if ( that.loadData == true ) {
+                that.dataJson.page++;
+                that.loadData = false;
+                that.$http.post('/Shop/Chat/chatHistory', that.dataJson, {emulateJSON:true}).then(function(response){
+                    var returnData = response['data'],
+                    	returnList = returnData['data']['list'];
+                    if ( returnList.length ) {
+                    	for (var i = 0; i < returnList.length; i++) {
+                    		returnList[i]['count'] = 0;
+                    	}
+                        that.list = ( that.list.length ) ? that.list.concat(returnList) : returnList;
+                        that.userInfo = returnData['data']['user'];
+                        that.from = 'yjwy' + that.userInfo.id;
+                        that.$store.commit('imlogin', {userId : that.from, passWord: that.from});
+                        that.initMessage();
+                    } else {
+                        if ( that.list.length ) {
+                            that.nomore = true;
+                        } else {
+                            that.noResult = true;
+                        }
+                    }
+                    that.$nextTick(function () {
+                        that.loadData = true;
+                        // that.$store.commit('loading',{show:false});
+                    })
+                });
+            }
+		},
+		loadMore(){
+            this.$store.commit('scrollFun',{dom:'messageIndex',auto:true,bottomCall:function(){        
+                if ( this.nomore == false ) {
+                    this.loadUserChat();
+                }
+            }})
+        },
+        //初始化消息
+		initMessage(){
+			var messageList = localStorage.messageList;
+			if ( messageList ) {
+				var messageList = JSON.parse(messageList);
+				for(var i=0; i<this.list.length; i++){
+					for(var j=0; j<messageList.length; j++){
+						var obj = this.list[i];
+						var list_from = 'yjwy' + obj.id;
+						if( list_from == messageList[j].id ){
+							obj.content = messageList[j].content;
+							obj.count = messageList[j].total;
+							obj.add_time = this.filterTime(messageList[j].time ) ;
+						}
+					}
+				}
+			}
+		},
+		createMessage(){
+			var messageData = this.$store.state.messageData;
+			console.log(messageData);
+			var messageList = JSON.parse(localStorage.messageList);
+			/****处理显示列表信息*****/
+			for(var i=0; i<this.list.length; i++){
+				if ( messageList && messageList.length>0 ) {
+					for(var j=0; j<messageList.length; j++){
+						var obj = this.list[i];
+						var list_from = 'yjwy' + obj.id;
+						if( list_from == messageList[j].id ){
+							obj.content = messageList[j].content;
+							obj.count = messageList[j].total;
+							obj.add_time = this.filterTime(messageList[j].time) ;
+							break;
+						}
+					}
+				}
+			}
+		},
+		//重置本地信息的total
+		resetTotal(fromId){
+			fromId = 'yjwy' + fromId;
+			var messageList =  localStorage['messageList'];
+			if ( messageList ) {
+				var messageList = JSON.parse(messageList);
+				for(var i=0; i<messageList.length; i++){
+					if( messageList[i].id == fromId ){
+						messageList[i].total = 0;
+						break;
+					}
+				}
+				localStorage['messageList'] = JSON.stringify(messageList);
+			}
+		},
+		filterTime(timestamp){
+			var date = new Date();
+			var now = date.getTime(); //当前时间戳
+
+			var date = new Date();
+			date.setHours(0);
+			date.setMinutes(0);
+			date.setSeconds(0);
+			date.setMilliseconds(0);
+			var today = date.getTime(); //今天0点时间戳
+
+			var date = new Date();
+			date.setMonth(0);
+			date.setDate(1);
+			date.setHours(0);
+			date.setMinutes(0);
+			date.setSeconds(0);
+			date.setMilliseconds(0);
+			var year = date.getTime(); //今年0点时间戳
+
+			var timer = (now - timestamp) / 1000;   // 转换为秒级时间戳
+			var tips = '';
+			var timeTips = new Date(timestamp).getHours() + ':' + new Date(timestamp).getMinutes();
+			if (timer <= 0) {
+				tips = timeTips;
+			} else if (Math.floor(timer/60) <= 0) {
+				tips = timeTips;
+			} else if (timer < 3600) {
+				tips = timeTips;
+			} else if (timer >= 3600 && (timestamp - today >= 0) ) {
+				tips = timeTips;
+			} else if (timer/86400 <= 1) {
+			    tips = '昨天 ' + timeTips;
+			} else {
+				var date = new Date(timestamp);
+				var month = date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1;
+				var day = date.getDate() < 10 ? '0' + date.getDate() : date.getDate();
+				var minutes = date.getMinutes();
+				tips = date.getFullYear() + '-' + month + "-" + day + ' ' + timeTips;
+			}
+			return tips;
+		},
+		jumpToChat(uid,aid,aname,headimgurl){
+			this.resetTotal(aid);
+			if ( this.wechatAgent === true ) {
+				this.$router.push({name:'consultation', query:{uid:uid,aid:aid,aname:aname}});
+			} else {
+				window.location.href = 'mitchell://chat?user_id='+ aid +'&nickname='+ aname +'&headimgurl='+ headimgurl;
+			}
+		}
+	}
+
+}
+</script>
+
